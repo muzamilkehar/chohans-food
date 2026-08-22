@@ -1,0 +1,6 @@
+{
+  "name": "Chohan's Fastfood",
+  "description": "Official interactive modern website for Chohan's Fastfood in Shikarpur, featuring the famous Broasted Chicken, artisanal Pizzas, online ordering, reviews, and store info.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
