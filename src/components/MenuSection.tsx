@@ -11,23 +11,42 @@ import {
   Plus, 
   Clock, 
   X,
-  Filter
+  Filter,
+  Edit3,
+  Trash2,
+  Lock,
+  Unlock,
+  Eye,
+  EyeOff,
+  Sliders
 } from 'lucide-react';
-import { CATEGORIES, MENU_ITEMS } from '../data/restaurantData';
+import { CATEGORIES } from '../data/restaurantData';
 import { MenuItem } from '../types';
+import { useMenu } from '../context/MenuContext';
 
 interface MenuSectionProps {
   onSelectItem: (item: MenuItem) => void;
   onAddToCart: (item: MenuItem) => void;
+  onOpenOwnerManager?: (itemToEdit?: MenuItem) => void;
 }
 
-export const MenuSection: React.FC<MenuSectionProps> = ({ onSelectItem }) => {
+export const MenuSection: React.FC<MenuSectionProps> = ({ 
+  onSelectItem,
+  onOpenOwnerManager 
+}) => {
+  const { 
+    menuItems, 
+    isOwnerMode, 
+    toggleItemAvailability, 
+    deleteMenuItem 
+  } = useMenu();
+
   const [activeCategory, setActiveCategory] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [activeFilter, setActiveFilter] = useState<'all' | 'popular' | 'spicy' | 'budget'>('all');
 
   const filteredItems = useMemo(() => {
-    return MENU_ITEMS.filter((item) => {
+    return menuItems.filter((item) => {
       const matchesCategory = activeCategory === 'all' || item.category === activeCategory;
       const q = searchQuery.toLowerCase().trim();
       const matchesSearch = !q || 
@@ -43,7 +62,7 @@ export const MenuSection: React.FC<MenuSectionProps> = ({ onSelectItem }) => {
 
       return matchesCategory && matchesSearch && matchesFilter;
     });
-  }, [activeCategory, searchQuery, activeFilter]);
+  }, [menuItems, activeCategory, searchQuery, activeFilter]);
 
   const getCategoryIcon = (iconName: string) => {
     switch (iconName) {
@@ -58,15 +77,54 @@ export const MenuSection: React.FC<MenuSectionProps> = ({ onSelectItem }) => {
   };
 
   return (
-    <section id="menu" className="py-16 bg-[#f9fafb] border-b border-gray-200 text-left">
+    <section id="menu" className="py-16 bg-[#f9fafb] border-b border-gray-200 text-left relative">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         
+        {/* Owner Management Notification Bar (If Owner Mode Active) */}
+        {isOwnerMode && (
+          <div className="mb-8 p-4 rounded-3xl bg-gradient-to-r from-[#111827] via-gray-900 to-[#1e293b] text-white flex flex-col sm:flex-row items-center justify-between gap-4 border border-gray-700 shadow-lg">
+            <div className="flex items-center gap-3">
+              <div className="w-9 h-9 rounded-2xl bg-amber-500/20 border border-amber-400/30 flex items-center justify-center text-amber-300 font-bold">
+                👑
+              </div>
+              <div>
+                <h4 className="text-xs sm:text-sm font-black text-white flex items-center gap-2">
+                  <span>Owner Mode Active</span>
+                  <span className="text-[10px] bg-emerald-500/20 text-emerald-300 px-2 py-0.5 rounded-full border border-emerald-400/30 font-bold">
+                    Live Editing Enabled
+                  </span>
+                </h4>
+                <p className="text-[11px] text-gray-300">
+                  You can edit, price, toggle stock, or delete any dish directly on the cards below.
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2 w-full sm:w-auto justify-end">
+              <button
+                onClick={() => onOpenOwnerManager && onOpenOwnerManager()}
+                className="px-4 py-2 rounded-full bg-[#B91C1C] hover:bg-red-700 text-white font-extrabold text-xs uppercase tracking-wider flex items-center gap-1.5 shadow-md transition-all cursor-pointer"
+              >
+                <Plus className="w-3.5 h-3.5 stroke-[3]" />
+                <span>Add Item</span>
+              </button>
+              <button
+                onClick={() => onOpenOwnerManager && onOpenOwnerManager()}
+                className="px-4 py-2 rounded-full bg-white/10 hover:bg-white/20 text-white font-bold text-xs uppercase tracking-wider flex items-center gap-1.5 border border-white/20 transition-all cursor-pointer"
+              >
+                <Sliders className="w-3.5 h-3.5" />
+                <span>Full Menu Portal</span>
+              </button>
+            </div>
+          </div>
+        )}
+
         {/* Section Header */}
         <div className="flex flex-col md:flex-row md:items-end justify-between mb-8 gap-4">
           <div className="space-y-2">
             <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-orange-100 border border-orange-200 text-orange-800 text-xs font-bold uppercase tracking-wider">
               <Utensils className="w-3.5 h-3.5 text-[#B91C1C]" />
-              <span>Full Digital Menu</span>
+              <span>Full Digital Menu ({menuItems.length} Dishes)</span>
             </div>
             <h2 className="text-2xl sm:text-3xl lg:text-4xl font-black text-gray-900 tracking-tight">
               Explore Our Authentic Fastfood Menu
@@ -76,25 +134,36 @@ export const MenuSection: React.FC<MenuSectionProps> = ({ onSelectItem }) => {
             </p>
           </div>
 
-          {/* Search Bar */}
-          <div className="relative w-full md:w-80">
-            <Search className="w-4 h-4 text-gray-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
-            <input
-              id="menu-search-input"
-              type="text"
-              placeholder="Search broast, pizza, zinger..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-10 pr-9 py-2.5 rounded-full bg-white border border-gray-200 text-gray-900 placeholder-gray-400 text-xs font-semibold focus:outline-none focus:border-[#B91C1C] focus:ring-1 focus:ring-[#B91C1C] shadow-sm transition-all"
-            />
-            {searchQuery && (
-              <button 
-                onClick={() => setSearchQuery('')}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            )}
+          {/* Search Bar & Owner Access Link */}
+          <div className="flex items-center gap-2 w-full md:w-auto">
+            <div className="relative w-full md:w-80">
+              <Search className="w-4 h-4 text-gray-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+              <input
+                id="menu-search-input"
+                type="text"
+                placeholder="Search broast, pizza, zinger..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full pl-10 pr-9 py-2.5 rounded-full bg-white border border-gray-200 text-gray-900 placeholder-gray-400 text-xs font-semibold focus:outline-none focus:border-[#B91C1C] focus:ring-1 focus:ring-[#B91C1C] shadow-sm transition-all"
+              />
+              {searchQuery && (
+                <button 
+                  onClick={() => setSearchQuery('')}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              )}
+            </div>
+
+            {/* Quick Owner Portal Button */}
+            <button
+              onClick={() => onOpenOwnerManager && onOpenOwnerManager()}
+              className="p-2.5 rounded-full bg-white border border-gray-200 hover:border-[#B91C1C] text-gray-600 hover:text-[#B91C1C] shadow-sm transition-colors cursor-pointer shrink-0"
+              title="Owner Menu Management"
+            >
+              {isOwnerMode ? <Unlock className="w-4 h-4 text-emerald-600" /> : <Lock className="w-4 h-4" />}
+            </button>
           </div>
         </div>
 
@@ -102,6 +171,10 @@ export const MenuSection: React.FC<MenuSectionProps> = ({ onSelectItem }) => {
         <div className="flex items-center gap-2 overflow-x-auto pb-3 mb-6 scrollbar-none">
           {CATEGORIES.map((cat) => {
             const isActive = activeCategory === cat.id;
+            const categoryCount = cat.id === 'all' 
+              ? menuItems.length 
+              : menuItems.filter(i => i.category === cat.id).length;
+
             return (
               <button
                 key={cat.id}
@@ -116,6 +189,11 @@ export const MenuSection: React.FC<MenuSectionProps> = ({ onSelectItem }) => {
                   {getCategoryIcon(cat.icon)}
                 </span>
                 <span>{cat.name}</span>
+                <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-bold ${
+                  isActive ? 'bg-white/20 text-white' : 'bg-gray-100 text-gray-500'
+                }`}>
+                  {categoryCount}
+                </span>
               </button>
             );
           })}
@@ -133,7 +211,7 @@ export const MenuSection: React.FC<MenuSectionProps> = ({ onSelectItem }) => {
                 activeFilter === 'all' ? 'bg-[#111827] text-white' : 'text-gray-500 hover:text-gray-900'
               }`}
             >
-              All
+              All ({menuItems.length})
             </button>
             <button
               onClick={() => setActiveFilter('popular')}
@@ -161,8 +239,19 @@ export const MenuSection: React.FC<MenuSectionProps> = ({ onSelectItem }) => {
             </button>
           </div>
 
-          <div className="text-xs text-gray-400 font-bold uppercase tracking-wider">
-            Showing <strong className="text-gray-900">{filteredItems.length}</strong> items
+          <div className="flex items-center gap-3">
+            <span className="text-xs text-gray-400 font-bold uppercase tracking-wider">
+              Showing <strong className="text-gray-900">{filteredItems.length}</strong> items
+            </span>
+            {isOwnerMode && (
+              <button
+                onClick={() => onOpenOwnerManager && onOpenOwnerManager()}
+                className="text-xs text-[#B91C1C] hover:underline font-extrabold uppercase tracking-wider flex items-center gap-1 cursor-pointer"
+              >
+                <Plus className="w-3.5 h-3.5" />
+                <span>Add Item</span>
+              </button>
+            )}
           </div>
         </div>
 
@@ -181,112 +270,179 @@ export const MenuSection: React.FC<MenuSectionProps> = ({ onSelectItem }) => {
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {filteredItems.map((item) => (
-              <div
-                key={item.id}
-                className="bg-white rounded-3xl overflow-hidden border border-gray-200 hover:border-[#B91C1C]/40 shadow-sm hover:shadow-lg transition-all duration-300 flex flex-col justify-between group"
-              >
-                {/* Image */}
-                <div 
-                  className="relative h-44 overflow-hidden bg-gray-100 cursor-pointer"
-                  onClick={() => onSelectItem(item)}
+            {filteredItems.map((item) => {
+              const isAvailable = item.isAvailable !== false;
+              return (
+                <div
+                  key={item.id}
+                  className={`bg-white rounded-3xl overflow-hidden border transition-all duration-300 flex flex-col justify-between group relative ${
+                    isAvailable 
+                      ? 'border-gray-200 hover:border-[#B91C1C]/40 shadow-sm hover:shadow-lg' 
+                      : 'border-red-200 bg-red-50/20 opacity-80'
+                  }`}
                 >
-                  <img
-                    src={item.image}
-                    alt={item.name}
-                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                    referrerPolicy="no-referrer"
-                  />
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent" />
+                  {/* Owner Live Edit Toolbar on Card (If Owner Mode Active) */}
+                  {isOwnerMode && (
+                    <div className="absolute top-2.5 right-2.5 z-20 flex items-center gap-1.5 bg-black/80 backdrop-blur-md p-1 rounded-full border border-gray-700 shadow-xl">
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          toggleItemAvailability(item.id);
+                        }}
+                        className={`p-1.5 rounded-full transition-colors ${
+                          isAvailable ? 'text-emerald-400 hover:bg-emerald-950' : 'text-red-400 hover:bg-red-950'
+                        }`}
+                        title={isAvailable ? 'Mark as Sold Out' : 'Mark as Available'}
+                      >
+                        {isAvailable ? <Eye className="w-3.5 h-3.5" /> : <EyeOff className="w-3.5 h-3.5" />}
+                      </button>
 
-                  {/* Top Badges */}
-                  <div className="absolute top-2.5 left-2.5 flex flex-wrap gap-1">
-                    {item.isPopular && (
-                      <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-[#B91C1C] text-white shadow-sm">
-                        Popular
-                      </span>
-                    )}
-                    {item.isSpicy && (
-                      <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-orange-600 text-white shadow-sm">
-                        Spicy 🔥
-                      </span>
-                    )}
-                    {item.isNew && (
-                      <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-emerald-600 text-white shadow-sm">
-                        Special
-                      </span>
-                    )}
-                  </div>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          if (onOpenOwnerManager) onOpenOwnerManager(item);
+                        }}
+                        className="p-1.5 rounded-full text-white hover:bg-white/20 transition-colors"
+                        title="Edit Item Details & Prices"
+                      >
+                        <Edit3 className="w-3.5 h-3.5" />
+                      </button>
 
-                  {item.prepTime && (
-                    <div className="absolute bottom-2 right-2.5 flex items-center gap-1 text-[10px] font-bold text-white bg-black/60 px-2 py-0.5 rounded-full backdrop-blur-sm">
-                      <Clock className="w-3 h-3 text-orange-400" />
-                      <span>{item.prepTime}</span>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          if (window.confirm(`Delete "${item.name}" from menu?`)) {
+                            deleteMenuItem(item.id);
+                          }
+                        }}
+                        className="p-1.5 rounded-full text-red-400 hover:bg-red-950 transition-colors"
+                        title="Delete Item"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
                     </div>
                   )}
-                </div>
 
-                {/* Content */}
-                <div className="p-5 flex-1 flex flex-col justify-between space-y-4">
-                  <div className="space-y-1.5">
-                    <h3 
-                      onClick={() => onSelectItem(item)}
-                      className="font-black text-gray-900 text-base group-hover:text-[#B91C1C] transition-colors cursor-pointer leading-snug line-clamp-1"
-                    >
-                      {item.name}
-                    </h3>
-                    {item.urduName && (
-                      <p className="text-xs text-[#B91C1C] font-arabic font-semibold">
-                        {item.urduName}
-                      </p>
-                    )}
-                    <p className="text-xs text-gray-500 line-clamp-2 leading-relaxed">
-                      {item.description}
-                    </p>
+                  {/* Image */}
+                  <div 
+                    className="relative h-44 overflow-hidden bg-gray-100 cursor-pointer"
+                    onClick={() => isAvailable && onSelectItem(item)}
+                  >
+                    <img
+                      src={item.image}
+                      alt={item.name}
+                      className={`w-full h-full object-cover transition-transform duration-500 ${
+                        isAvailable ? 'group-hover:scale-105' : 'grayscale'
+                      }`}
+                      referrerPolicy="no-referrer"
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent" />
 
-                    {/* Size badge preview */}
-                    {item.sizes && (
-                      <div className="flex items-center gap-1.5 pt-1">
-                        <span className="text-[10px] uppercase font-bold text-gray-400">Sizes:</span>
-                        <div className="flex flex-wrap gap-1">
-                          {item.sizes.map((s, idx) => (
-                            <span key={idx} className="text-[10px] px-2 py-0.5 rounded-full bg-gray-100 text-gray-700 font-bold">
-                              {s.name.split(' ')[0]}
-                            </span>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Pricing & Add Button */}
-                  <div className="pt-3 border-t border-gray-100 flex items-center justify-between">
-                    <div>
-                      {item.sizes && <span className="text-[10px] text-gray-400 font-bold uppercase tracking-wider block">From</span>}
-                      <div className="flex items-baseline gap-1.5">
-                        <span className="text-lg font-black text-gray-900">
-                          Rs {item.price.toLocaleString()}
+                    {/* Top Badges */}
+                    <div className="absolute top-2.5 left-2.5 flex flex-wrap gap-1">
+                      {!isAvailable ? (
+                        <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-red-600 text-white shadow-md">
+                          Sold Out
                         </span>
-                        {item.originalPrice && (
-                          <span className="text-xs text-gray-400 line-through">
-                            Rs {item.originalPrice.toLocaleString()}
-                          </span>
-                        )}
-                      </div>
+                      ) : (
+                        <>
+                          {item.isPopular && (
+                            <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-[#B91C1C] text-white shadow-sm">
+                              Popular
+                            </span>
+                          )}
+                          {item.isSpicy && (
+                            <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-orange-600 text-white shadow-sm">
+                              Spicy 🔥
+                            </span>
+                          )}
+                          {item.isNew && (
+                            <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-emerald-600 text-white shadow-sm">
+                              Special
+                            </span>
+                          )}
+                        </>
+                      )}
                     </div>
 
-                    <button
-                      onClick={() => onSelectItem(item)}
-                      className="flex items-center gap-1 px-3.5 py-2 rounded-full bg-gray-100 hover:bg-[#B91C1C] hover:text-white text-gray-900 font-extrabold text-xs uppercase tracking-wider transition-all cursor-pointer group-hover:scale-105 active:scale-95"
-                    >
-                      <Plus className="w-3.5 h-3.5" />
-                      <span>{item.sizes || item.addOns ? 'Customize' : 'Add'}</span>
-                    </button>
+                    {item.prepTime && isAvailable && (
+                      <div className="absolute bottom-2 right-2.5 flex items-center gap-1 text-[10px] font-bold text-white bg-black/60 px-2 py-0.5 rounded-full backdrop-blur-sm">
+                        <Clock className="w-3 h-3 text-orange-400" />
+                        <span>{item.prepTime}</span>
+                      </div>
+                    )}
                   </div>
 
+                  {/* Content */}
+                  <div className="p-5 flex-1 flex flex-col justify-between space-y-4">
+                    <div className="space-y-1.5">
+                      <h3 
+                        onClick={() => isAvailable && onSelectItem(item)}
+                        className={`font-black text-gray-900 text-base leading-snug line-clamp-1 ${
+                          isAvailable ? 'group-hover:text-[#B91C1C] cursor-pointer' : 'text-gray-500'
+                        }`}
+                      >
+                        {item.name}
+                      </h3>
+                      {item.urduName && (
+                        <p className="text-xs text-[#B91C1C] font-arabic font-semibold">
+                          {item.urduName}
+                        </p>
+                      )}
+                      <p className="text-xs text-gray-500 line-clamp-2 leading-relaxed">
+                        {item.description}
+                      </p>
+
+                      {/* Size badge preview */}
+                      {item.sizes && (
+                        <div className="flex items-center gap-1.5 pt-1">
+                          <span className="text-[10px] uppercase font-bold text-gray-400">Sizes:</span>
+                          <div className="flex flex-wrap gap-1">
+                            {item.sizes.map((s, idx) => (
+                              <span key={idx} className="text-[10px] px-2 py-0.5 rounded-full bg-gray-100 text-gray-700 font-bold">
+                                {s.name.split(' ')[0]}
+                              </span>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Pricing & Add Button */}
+                    <div className="pt-3 border-t border-gray-100 flex items-center justify-between">
+                      <div>
+                        {item.sizes && <span className="text-[10px] text-gray-400 font-bold uppercase tracking-wider block">From</span>}
+                        <div className="flex items-baseline gap-1.5">
+                          <span className="text-lg font-black text-gray-900">
+                            Rs {item.price.toLocaleString()}
+                          </span>
+                          {item.originalPrice && (
+                            <span className="text-xs text-gray-400 line-through">
+                              Rs {item.originalPrice.toLocaleString()}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+
+                      {isAvailable ? (
+                        <button
+                          onClick={() => onSelectItem(item)}
+                          className="flex items-center gap-1 px-3.5 py-2 rounded-full bg-gray-100 hover:bg-[#B91C1C] hover:text-white text-gray-900 font-extrabold text-xs uppercase tracking-wider transition-all cursor-pointer group-hover:scale-105 active:scale-95"
+                        >
+                          <Plus className="w-3.5 h-3.5" />
+                          <span>{item.sizes || item.addOns ? 'Customize' : 'Add'}</span>
+                        </button>
+                      ) : (
+                        <span className="text-[11px] font-bold text-red-600 bg-red-100 px-3 py-1.5 rounded-full">
+                          Sold Out
+                        </span>
+                      )}
+                    </div>
+
+                  </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
 

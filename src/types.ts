@@ -10,6 +10,7 @@ export interface MenuItem {
   isPopular?: boolean;
   isSpicy?: boolean;
   isNew?: boolean;
+  isAvailable?: boolean; // Stock availability (true by default)
   sizes?: { name: string; price: number }[];
   addOns?: { id: string; name: string; price: number }[];
   serves?: string;
@@ -55,4 +56,5 @@ export interface DealItem {
   serves: string;
   image: string;
   badge?: string;
+  isAvailable?: boolean;
 }

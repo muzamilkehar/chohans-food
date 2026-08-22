@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Sparkles, Check, Plus } from 'lucide-react';
-import { MENU_ITEMS, DEALS_DATA } from '../data/restaurantData';
 import { MenuItem, DealItem } from '../types';
+import { useMenu } from '../context/MenuContext';
 
 interface MealRecommenderProps {
   onAddDealToCart: (deal: DealItem) => void;
@@ -9,83 +9,92 @@ interface MealRecommenderProps {
 }
 
 export const MealRecommender: React.FC<MealRecommenderProps> = ({ onAddDealToCart, onSelectItem }) => {
+  const { menuItems, deals } = useMenu();
   const [groupSize, setGroupSize] = useState<'solo' | 'duo' | 'family' | 'party'>('duo');
   const [craving, setCraving] = useState<'broast' | 'pizza' | 'zinger' | 'budget'>('broast');
 
   const getRecommendation = () => {
     if (groupSize === 'party') {
+      const deal = deals.find(d => d.id === 'deal-4-family-mega') || deals[deals.length - 1];
       return {
-        title: "Chohan's Mega Party Platter",
+        title: deal?.title || "Chohan's Mega Party Platter",
         description: "The ultimate Shikarpur feast with 13\" Large Pizza, 4 Pcs Crispy Broast, Loaded Pizza Fries and 1.5L soft drink.",
-        price: 3450,
-        deal: DEALS_DATA.find(d => d.id === 'deal-4-family-mega'),
+        price: deal ? deal.price : 3450,
+        deal: deal,
         highlights: ["Serves 4-6", "Save Rs 500", "Large Tikka Pizza", "4x Golden Broast Pieces"]
       };
     }
 
     if (groupSize === 'family') {
       if (craving === 'pizza' || craving === 'broast') {
+        const deal = deals.find(d => d.id === 'deal-2-pizza-feast') || deals[1] || deals[0];
         return {
-          title: "Deal 2: Shikarpur Pizza & Broast Feast",
+          title: deal?.title || "Deal 2: Shikarpur Pizza & Broast Feast",
           description: "Perfect harmony of a 10\" Medium Tikka Pizza + 2 Pcs Golden Broast + Hot Crinkle Fries + 1L Beverage.",
-          price: 1750,
-          deal: DEALS_DATA.find(d => d.id === 'deal-2-pizza-feast'),
-          highlights: ["Serves 2-3", "Save Rs 300", "10\" Tikka Pizza", "2x Broasted Chicken"]
+          price: deal ? deal.price : 1750,
+          deal: deal,
+          highlights: ["Serves 2-3", "10\" Tikka Pizza", "2x Broasted Chicken", "Hot Fries"]
         };
       }
+      const item = menuItems.find(m => m.id === 'broast-family-platter') || menuItems.find(m => m.category === 'broast') || menuItems[0];
       return {
-        title: "Grand Broast Platter (8 Pcs)",
-        description: "8 pieces of signature golden crispy pressure-fried chicken, jumbo fries, 4 buns, garlic dips & 1.5L drink.",
-        price: 3200,
-        item: MENU_ITEMS.find(m => m.id === 'broast-family-platter'),
-        highlights: ["Serves 4-5", "Full Family Size", "8 Crispy Chicken Pieces", "Free Dips & Buns"]
+        title: item?.name || "Grand Broast Platter (8 Pcs)",
+        description: item?.description || "8 pieces of signature golden crispy pressure-fried chicken, jumbo fries, 4 buns, garlic dips & 1.5L drink.",
+        price: item ? item.price : 3200,
+        item: item,
+        highlights: ["Serves 4-5", "Full Family Size", "Crispy Chicken Pieces", "Free Dips & Buns"]
       };
     }
 
     if (groupSize === 'duo') {
       if (craving === 'zinger') {
+        const deal = deals.find(d => d.id === 'deal-3-zinger-duo') || deals[0];
         return {
-          title: "Deal 3: Double Zinger Crunch Box",
+          title: deal?.title || "Deal 3: Double Zinger Crunch Box",
           description: "2 Crispy fried Zinger burgers, seasoned French fries & 2 cold drinks.",
-          price: 1100,
-          deal: DEALS_DATA.find(d => d.id === 'deal-3-zinger-duo'),
-          highlights: ["Serves 2", "Save Rs 180", "2x Zinger Burgers", "Crispy Fries + Drinks"]
+          price: deal ? deal.price : 1100,
+          deal: deal,
+          highlights: ["Serves 2", "2x Zinger Burgers", "Crispy Fries + Drinks"]
         };
       }
+      const deal = deals.find(d => d.id === 'deal-1-broast-duo') || deals[0];
       return {
-        title: "Deal 1: Broast Lover's Combo",
+        title: deal?.title || "Deal 1: Broast Lover's Combo",
         description: "2 pieces golden chicken broast, large masala crinkle fries, 2 dinner buns, garlic sauces & 2 drinks.",
-        price: 1150,
-        deal: DEALS_DATA.find(d => d.id === 'deal-1-broast-duo'),
-        highlights: ["Serves 1-2", "Save Rs 200", "2 Pcs Broast", "Garlic Dips & Buns"]
+        price: deal ? deal.price : 1150,
+        deal: deal,
+        highlights: ["Serves 1-2", "2 Pcs Broast", "Garlic Dips & Buns"]
       };
     }
 
     // Solo
     if (craving === 'pizza') {
+      const item = menuItems.find(m => m.id === 'pizza-tikka-special') || menuItems.find(m => m.category === 'pizza') || menuItems[0];
       return {
-        title: "Shikarpur Special Tikka Pizza (Small 7\")",
-        description: "Personal 7-inch pan pizza loaded with smoky tandoori chicken chunks and gooey mozzarella.",
-        price: 550,
-        item: MENU_ITEMS.find(m => m.id === 'pizza-tikka-special'),
-        highlights: ["Personal 7\" Size", "4 Slices", "Smoky Tandoori Chicken"]
+        title: item?.name || "Shikarpur Special Tikka Pizza",
+        description: item?.description || "Personal 7-inch pan pizza loaded with smoky tandoori chicken chunks and gooey mozzarella.",
+        price: item ? item.price : 550,
+        item: item,
+        highlights: ["Personal Size", "Freshly Baked", "Smoky Tandoori Chicken"]
       };
     }
     if (craving === 'zinger') {
+      const item = menuItems.find(m => m.id === 'burger-crispy-zinger') || menuItems.find(m => m.category === 'burgers') || menuItems[0];
       return {
-        title: "Chohan's Signature Zinger Burger",
-        description: "Crispy fried whole chicken thigh fillet with chili garlic mayo and toasted brioche bun.",
-        price: 450,
-        item: MENU_ITEMS.find(m => m.id === 'burger-crispy-zinger'),
+        title: item?.name || "Chohan's Signature Zinger Burger",
+        description: item?.description || "Crispy fried whole chicken thigh fillet with chili garlic mayo and toasted brioche bun.",
+        price: item ? item.price : 450,
+        item: item,
         highlights: ["100% Real Chicken Thigh", "Extra Crunchy", "Spicy Garlic Sauce"]
       };
     }
+    const item = menuItems.find(m => m.id === 'broast-quarter') || menuItems.find(m => m.category === 'broast') || menuItems[0];
     return {
-      title: "Chohan's Golden Chicken Broast (Quarter)",
-      description: "Quarter pressure-fried crispy chicken with seasoned crinkle fries, garlic mayo and dip.",
-      price: 480,
-      item: MENU_ITEMS.find(m => m.id === 'broast-quarter'),
-      highlights: ["Quarter Chicken (1 Pc)", "Crinkle Fries Included", "Garlic Mayo Dip"]
+      title: item?.name || "Chohan's Golden Chicken Broast (Quarter)",
+      description: item?.description || "Quarter pressure-fried crispy chicken with seasoned crinkle fries, garlic mayo and dip.",
+      price: item ? item.price : 480,
+      item: item,
+      highlights: ["Quarter Chicken", "Crinkle Fries Included", "Garlic Mayo Dip"]
     };
   };
 
@@ -138,37 +147,37 @@ export const MealRecommender: React.FC<MealRecommenderProps> = ({ onAddDealToCar
                     >
                       <span className="text-lg block mb-1">{btn.icon}</span>
                       <p className="text-xs font-bold leading-tight">{btn.label}</p>
-                      <p className={`text-[10px] ${groupSize === btn.id ? 'text-red-100 font-medium' : 'text-gray-400'}`}>
+                      <span className={`text-[10px] ${groupSize === btn.id ? 'text-red-100' : 'text-gray-400'}`}>
                         {btn.sub}
-                      </p>
+                      </span>
                     </button>
                   ))}
                 </div>
               </div>
 
-              {/* Craving Selection */}
+              {/* Craving */}
               <div>
                 <label className="block text-xs font-bold uppercase tracking-wider text-gray-400 mb-3">
-                  2. What's the main craving?
+                  2. What's your primary craving?
                 </label>
-                <div className="grid grid-cols-2 gap-2.5">
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
                   {[
-                    { id: 'broast', label: 'Crispy Broast', icon: '🍗' },
+                    { id: 'broast', label: 'Golden Broast', icon: '🍗' },
                     { id: 'pizza', label: 'Cheesy Pizza', icon: '🍕' },
-                    { id: 'zinger', label: 'Crunchy Zinger', icon: '🍔' },
-                    { id: 'budget', label: 'Best Value Deal', icon: '💰' },
+                    { id: 'zinger', label: 'Crispy Zinger', icon: '🍔' },
+                    { id: 'budget', label: 'Best Value', icon: '💰' },
                   ].map((btn) => (
                     <button
                       key={btn.id}
                       onClick={() => setCraving(btn.id as any)}
-                      className={`p-3 rounded-2xl text-left border transition-all cursor-pointer ${
+                      className={`p-2.5 rounded-2xl text-center border transition-all cursor-pointer ${
                         craving === btn.id
                           ? 'bg-[#111827] text-white border-[#111827] font-bold shadow-sm'
                           : 'bg-gray-50 text-gray-700 border-gray-200 hover:border-gray-300'
                       }`}
                     >
                       <span className="text-base block mb-0.5">{btn.icon}</span>
-                      <p className="text-xs font-bold leading-tight">{btn.label}</p>
+                      <p className="text-[11px] font-bold">{btn.label}</p>
                     </button>
                   ))}
                 </div>
@@ -176,25 +185,28 @@ export const MealRecommender: React.FC<MealRecommenderProps> = ({ onAddDealToCar
             </div>
 
             {/* Recommendation Result Card */}
-            <div className="bg-gradient-to-br from-white to-orange-50/50 rounded-3xl border border-orange-200 p-6 flex flex-col justify-between space-y-4 shadow-sm relative overflow-hidden">
+            <div className="bg-gradient-to-br from-red-50 to-orange-50/50 rounded-3xl p-6 border border-red-100 flex flex-col justify-between space-y-4">
               <div className="space-y-3">
                 <div className="flex items-center justify-between">
-                  <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-[#B91C1C] text-white shadow-sm">
+                  <span className="px-3 py-1 rounded-full bg-[#B91C1C] text-white text-[10px] font-black uppercase tracking-wider">
                     Recommended Match
                   </span>
-                  <span className="text-xl font-black text-gray-900">
+                  <span className="text-lg font-black text-[#B91C1C]">
                     Rs {rec.price.toLocaleString()}
                   </span>
                 </div>
 
-                <h3 className="text-xl font-black text-gray-900 leading-snug">
-                  {rec.title}
-                </h3>
-                <p className="text-xs text-gray-600 leading-relaxed">
-                  {rec.description}
-                </p>
+                <div className="space-y-1">
+                  <h3 className="text-lg font-black text-gray-900 leading-tight">
+                    {rec.title}
+                  </h3>
+                  <p className="text-xs text-gray-600 leading-relaxed">
+                    {rec.description}
+                  </p>
+                </div>
 
-                <div className="space-y-1.5 pt-2 border-t border-orange-100">
+                {/* Highlights */}
+                <div className="space-y-1.5 pt-2">
                   {rec.highlights.map((h, i) => (
                     <div key={i} className="flex items-center gap-2 text-xs font-semibold text-gray-700">
                       <Check className="w-3.5 h-3.5 text-[#B91C1C] shrink-0" />
@@ -204,22 +216,23 @@ export const MealRecommender: React.FC<MealRecommenderProps> = ({ onAddDealToCar
                 </div>
               </div>
 
-              <div className="pt-4 border-t border-orange-100">
+              {/* Action */}
+              <div className="pt-3 border-t border-red-200/60">
                 {rec.deal ? (
                   <button
                     onClick={() => onAddDealToCart(rec.deal!)}
-                    className="w-full py-3 rounded-full bg-[#111827] hover:bg-[#B91C1C] text-white font-extrabold text-xs uppercase tracking-widest flex items-center justify-center gap-2 shadow-md transition-all cursor-pointer"
+                    className="w-full py-3 rounded-full bg-[#B91C1C] hover:bg-red-700 text-white font-extrabold text-xs uppercase tracking-wider shadow-md transition-all flex items-center justify-center gap-2 cursor-pointer hover:shadow-lg active:scale-95"
                   >
                     <Plus className="w-4 h-4" />
-                    <span>Add Recommended Deal (Rs {rec.price})</span>
+                    <span>Add Deal to Order (Rs {rec.price.toLocaleString()})</span>
                   </button>
                 ) : rec.item ? (
                   <button
                     onClick={() => onSelectItem(rec.item!)}
-                    className="w-full py-3 rounded-full bg-[#111827] hover:bg-[#B91C1C] text-white font-extrabold text-xs uppercase tracking-widest flex items-center justify-center gap-2 shadow-md transition-all cursor-pointer"
+                    className="w-full py-3 rounded-full bg-[#111827] hover:bg-[#B91C1C] text-white font-extrabold text-xs uppercase tracking-wider shadow-md transition-all flex items-center justify-center gap-2 cursor-pointer hover:shadow-lg active:scale-95"
                   >
                     <Plus className="w-4 h-4" />
-                    <span>Customize & Order (Rs {rec.price})</span>
+                    <span>Customize & Order (Rs {rec.price.toLocaleString()})</span>
                   </button>
                 ) : null}
               </div>

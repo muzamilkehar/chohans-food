@@ -1,13 +1,19 @@
 import React from 'react';
-import { Flame, Users, Plus, Check } from 'lucide-react';
-import { DEALS_DATA } from '../data/restaurantData';
+import { Flame, Users, Plus, Check, Edit3, Trash2 } from 'lucide-react';
 import { DealItem } from '../types';
+import { useMenu } from '../context/MenuContext';
 
 interface DealsSectionProps {
   onAddDealToCart: (deal: DealItem) => void;
+  onOpenOwnerManager?: () => void;
 }
 
-export const DealsSection: React.FC<DealsSectionProps> = ({ onAddDealToCart }) => {
+export const DealsSection: React.FC<DealsSectionProps> = ({ 
+  onAddDealToCart,
+  onOpenOwnerManager 
+}) => {
+  const { deals, isOwnerMode, deleteDeal } = useMenu();
+
   return (
     <section id="deals" className="py-16 bg-white border-b border-gray-200 text-left">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -24,15 +30,51 @@ export const DealsSection: React.FC<DealsSectionProps> = ({ onAddDealToCart }) =
           <p className="text-gray-500 text-sm sm:text-base">
             Satisfy your hunger with complete meal combos. Perfect for solo treats, duo dates, and family gatherings in Shikarpur.
           </p>
+
+          {isOwnerMode && (
+            <div className="pt-2">
+              <button
+                onClick={() => onOpenOwnerManager && onOpenOwnerManager()}
+                className="inline-flex items-center gap-1.5 px-4 py-1.5 rounded-full bg-gray-900 text-white hover:bg-[#B91C1C] text-xs font-bold uppercase tracking-wider transition-colors cursor-pointer"
+              >
+                <Plus className="w-3.5 h-3.5" />
+                <span>Manage Deals & Bundles</span>
+              </button>
+            </div>
+          )}
         </div>
 
         {/* Deals Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-          {DEALS_DATA.map((deal) => (
+          {deals.map((deal) => (
             <div 
               key={deal.id}
               className="bg-white rounded-3xl overflow-hidden border border-gray-200 hover:border-[#B91C1C]/50 shadow-sm hover:shadow-xl flex flex-col justify-between group transition-all duration-300 relative"
             >
+              {/* Owner Quick Toolbar if active */}
+              {isOwnerMode && (
+                <div className="absolute top-2.5 right-2.5 z-20 flex items-center gap-1 bg-black/80 backdrop-blur-md p-1 rounded-full border border-gray-700 shadow-xl">
+                  <button
+                    onClick={() => onOpenOwnerManager && onOpenOwnerManager()}
+                    className="p-1.5 rounded-full text-white hover:bg-white/20 transition-colors"
+                    title="Edit Deal"
+                  >
+                    <Edit3 className="w-3.5 h-3.5" />
+                  </button>
+                  <button
+                    onClick={() => {
+                      if (window.confirm(`Delete deal "${deal.title}"?`)) {
+                        deleteDeal(deal.id);
+                      }
+                    }}
+                    className="p-1.5 rounded-full text-red-400 hover:bg-red-950 transition-colors"
+                    title="Delete Deal"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              )}
+
               {/* Top Tag & Savings Badge */}
               <div className="relative h-44 overflow-hidden bg-gray-100">
                 <img 
@@ -49,7 +91,7 @@ export const DealsSection: React.FC<DealsSectionProps> = ({ onAddDealToCart }) =
                   </span>
                 </div>
 
-                {deal.badge && (
+                {deal.badge && !isOwnerMode && (
                   <div className="absolute top-3 right-3">
                     <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black tracking-wider uppercase bg-[#B91C1C] text-white shadow-sm">
                       {deal.badge}

@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { MenuProvider } from './context/MenuContext';
 import { Header } from './components/Header';
 import { Hero } from './components/Hero';
 import { FeaturedSpecials } from './components/FeaturedSpecials';
@@ -12,11 +13,12 @@ import { LocationSection } from './components/LocationSection';
 import { Footer } from './components/Footer';
 import { ItemDetailModal } from './components/ItemDetailModal';
 import { CartDrawer } from './components/CartDrawer';
+import { OwnerMenuManager } from './components/OwnerMenuManager';
 import { MenuItem, DealItem, CartItem } from './types';
 import { RESTAURANT_INFO } from './data/restaurantData';
 import { ShoppingBag, MessageCircle, Check } from 'lucide-react';
 
-export default function App() {
+function MainAppContent() {
   // Cart state stored in localStorage
   const [cartItems, setCartItems] = useState<CartItem[]>(() => {
     try {
@@ -31,6 +33,10 @@ export default function App() {
   const [selectedItemForModal, setSelectedItemForModal] = useState<MenuItem | null>(null);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
+  // Owner Portal modal state
+  const [isOwnerManagerOpen, setIsOwnerManagerOpen] = useState(false);
+  const [ownerItemToEdit, setOwnerItemToEdit] = useState<MenuItem | null>(null);
+
   // Sync cart to localStorage
   useEffect(() => {
     try {
@@ -43,6 +49,11 @@ export default function App() {
   const showToast = (msg: string) => {
     setToastMessage(msg);
     setTimeout(() => setToastMessage(null), 3000);
+  };
+
+  const handleOpenOwnerManager = (itemToEdit?: MenuItem) => {
+    setOwnerItemToEdit(itemToEdit || null);
+    setIsOwnerManagerOpen(true);
   };
 
   const handleAddToCart = (newItem: CartItem) => {
@@ -158,6 +169,7 @@ export default function App() {
       <Header
         cartItems={cartItems}
         onOpenCart={() => setIsCartOpen(true)}
+        onOpenOwnerManager={() => handleOpenOwnerManager()}
       />
 
       {/* Main Content Sections */}
@@ -175,10 +187,12 @@ export default function App() {
         <MenuSection
           onSelectItem={(item) => setSelectedItemForModal(item)}
           onAddToCart={handleQuickAdd}
+          onOpenOwnerManager={handleOpenOwnerManager}
         />
 
         <DealsSection
           onAddDealToCart={handleAddDealToCart}
+          onOpenOwnerManager={() => handleOpenOwnerManager()}
         />
 
         <MealRecommender
@@ -196,7 +210,7 @@ export default function App() {
       </main>
 
       {/* Footer */}
-      <Footer />
+      <Footer onOpenOwnerManager={() => handleOpenOwnerManager()} />
 
       {/* Item Detail / Customization Modal */}
       <ItemDetailModal
@@ -213,6 +227,16 @@ export default function App() {
         onUpdateQuantity={handleUpdateQuantity}
         onRemoveItem={handleRemoveItem}
         onClearCart={handleClearCart}
+      />
+
+      {/* Owner Menu Management & CRUD Modal */}
+      <OwnerMenuManager
+        isOpen={isOwnerManagerOpen}
+        onClose={() => {
+          setIsOwnerManagerOpen(false);
+          setOwnerItemToEdit(null);
+        }}
+        initialEditItem={ownerItemToEdit}
       />
 
       {/* Floating Quick Action Bar */}
@@ -251,5 +275,13 @@ export default function App() {
       )}
 
     </div>
+  );
+}
+
+export default function App() {
+  return (
+    <MenuProvider>
+      <MainAppContent />
+    </MenuProvider>
   );
 }

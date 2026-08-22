@@ -7,18 +7,27 @@ import {
   X, 
   ChevronRight,
   MessageCircle,
-  Clock
+  Lock,
+  Unlock,
+  Sliders
 } from 'lucide-react';
 import { RESTAURANT_INFO } from '../data/restaurantData';
 import { CartItem } from '../types';
+import { useMenu } from '../context/MenuContext';
 
 interface HeaderProps {
   cartItems: CartItem[];
   onOpenCart: () => void;
   onOpenOrderModal?: () => void;
+  onOpenOwnerManager?: () => void;
 }
 
-export const Header: React.FC<HeaderProps> = ({ cartItems, onOpenCart }) => {
+export const Header: React.FC<HeaderProps> = ({ 
+  cartItems, 
+  onOpenCart,
+  onOpenOwnerManager 
+}) => {
+  const { isOwnerMode } = useMenu();
   const [isScrolled, setIsScrolled] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [isOpenNow, setIsOpenNow] = useState(true);
@@ -78,13 +87,26 @@ export const Header: React.FC<HeaderProps> = ({ cartItems, onOpenCart }) => {
             </span>
           </div>
 
-          <div className="flex items-center gap-4 text-xs">
+          <div className="flex items-center gap-3 sm:gap-4 text-xs">
+            {/* Owner Access Link */}
+            <button
+              onClick={() => onOpenOwnerManager && onOpenOwnerManager()}
+              className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold uppercase tracking-wider transition-colors cursor-pointer ${
+                isOwnerMode 
+                  ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 hover:bg-emerald-500/30' 
+                  : 'text-gray-400 hover:text-white'
+              }`}
+            >
+              {isOwnerMode ? <Unlock className="w-3 h-3 text-emerald-400" /> : <Lock className="w-3 h-3" />}
+              <span>{isOwnerMode ? '👑 Owner Mode Active' : 'Owner Portal'}</span>
+            </button>
+
             <span className="hidden md:inline text-gray-400 font-medium">
               💵 {RESTAURANT_INFO.paymentMethod}
             </span>
             <a 
               href={`tel:${RESTAURANT_INFO.phone}`} 
-              className="flex items-center gap-1 font-bold text-white hover:text-red-400 transition-colors"
+              className="hidden sm:flex items-center gap-1 font-bold text-white hover:text-red-400 transition-colors"
             >
               <Phone className="w-3.5 h-3.5 text-red-400" />
               <span>{RESTAURANT_INFO.phone}</span>
@@ -143,6 +165,17 @@ export const Header: React.FC<HeaderProps> = ({ cartItems, onOpenCart }) => {
 
           {/* Action CTAs */}
           <div className="flex items-center gap-2 sm:gap-3">
+            {/* Owner Portal quick launcher if active */}
+            {isOwnerMode && (
+              <button
+                onClick={() => onOpenOwnerManager && onOpenOwnerManager()}
+                className="hidden md:inline-flex items-center gap-1.5 px-3 py-2 rounded-full text-xs font-black uppercase tracking-wider bg-amber-50 text-amber-900 border border-amber-300 hover:bg-amber-100 transition-colors cursor-pointer"
+              >
+                <Sliders className="w-3.5 h-3.5 text-[#B91C1C]" />
+                <span>Edit Menu</span>
+              </button>
+            )}
+
             {/* Quick WhatsApp Link */}
             <a
               href={`https://wa.me/${RESTAURANT_INFO.whatsappNumber}?text=${encodeURIComponent("Salam Chohan's Fastfood! I want to order food.")}`}
@@ -199,6 +232,19 @@ export const Header: React.FC<HeaderProps> = ({ cartItems, onOpenCart }) => {
             </div>
 
             <div className="pt-3 border-t border-gray-100 flex flex-col gap-2">
+              <button
+                onClick={() => {
+                  setMobileMenuOpen(false);
+                  if (onOpenOwnerManager) onOpenOwnerManager();
+                }}
+                className={`w-full flex items-center justify-center gap-2 py-2.5 rounded-xl text-xs font-bold uppercase tracking-wider ${
+                  isOwnerMode ? 'bg-amber-100 text-amber-900 border border-amber-300' : 'bg-gray-100 text-gray-900'
+                }`}
+              >
+                {isOwnerMode ? <Unlock className="w-4 h-4 text-emerald-600" /> : <Lock className="w-4 h-4" />}
+                <span>{isOwnerMode ? '👑 Owner Menu Portal (Active)' : 'Owner & Kitchen Login'}</span>
+              </button>
+
               <a
                 href={`tel:${RESTAURANT_INFO.phone}`}
                 className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl bg-gray-100 text-gray-900 font-bold text-xs uppercase tracking-wider hover:bg-gray-200"

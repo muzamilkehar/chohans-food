@@ -4,13 +4,22 @@ import {
   MapPin, 
   Clock, 
   MessageCircle, 
-  ChevronRight,
-  Heart,
-  ArrowUp
+  ChevronRight, 
+  ArrowUp,
+  Lock,
+  Unlock,
+  Shield
 } from 'lucide-react';
 import { RESTAURANT_INFO } from '../data/restaurantData';
+import { useMenu } from '../context/MenuContext';
 
-export const Footer: React.FC = () => {
+interface FooterProps {
+  onOpenOwnerManager?: () => void;
+}
+
+export const Footer: React.FC<FooterProps> = ({ onOpenOwnerManager }) => {
+  const { isOwnerMode } = useMenu();
+
   const scrollToTop = () => {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
@@ -43,11 +52,24 @@ export const Footer: React.FC = () => {
               crispy zinger burgers, and loaded cheesy tikka pizzas. Serving happiness fresh daily.
             </p>
 
-            <div className="flex items-center gap-2 pt-2">
+            <div className="flex flex-wrap items-center gap-2 pt-2">
               <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-950 text-emerald-300 text-xs font-bold border border-emerald-800/60">
                 <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
                 Kitchen Open Daily 12 PM – 1 AM
               </span>
+
+              {/* Owner Portal quick toggle */}
+              <button
+                onClick={() => onOpenOwnerManager && onOpenOwnerManager()}
+                className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold transition-all cursor-pointer ${
+                  isOwnerMode
+                    ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 hover:bg-emerald-500/30'
+                    : 'bg-gray-800 text-gray-400 hover:text-white hover:bg-gray-700 border border-gray-700'
+                }`}
+              >
+                {isOwnerMode ? <Unlock className="w-3 h-3 text-emerald-400" /> : <Lock className="w-3 h-3" />}
+                <span>{isOwnerMode ? 'Owner Mode Active' : 'Owner & Staff Portal'}</span>
+              </button>
             </div>
           </div>
 
@@ -139,10 +161,20 @@ export const Footer: React.FC = () => {
 
         {/* Bottom Bar & Copyright */}
         <div className="pt-8 border-t border-gray-800 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-gray-500">
-          <p>© {new Date().getFullYear()} Chohan's Fastfood (Chohan's Food Club). All rights reserved.</p>
+          <div className="flex items-center gap-2">
+            <span>© {new Date().getFullYear()} Chohan's Fastfood. All rights reserved.</span>
+            <span className="text-gray-700">•</span>
+            <button
+              onClick={() => onOpenOwnerManager && onOpenOwnerManager()}
+              className="text-gray-400 hover:text-white transition-colors cursor-pointer flex items-center gap-1 font-semibold"
+            >
+              <Shield className="w-3 h-3" />
+              <span>Owner Access</span>
+            </button>
+          </div>
           
           <div className="flex items-center gap-4">
-            <span>Prices inclusive of local preparation. Cash on Delivery available.</span>
+            <span>Prices inclusive of fresh preparation. Cash on Delivery available.</span>
             <button
               onClick={scrollToTop}
               className="w-8 h-8 rounded-full bg-gray-800 hover:bg-[#B91C1C] text-gray-300 hover:text-white flex items-center justify-center transition-colors cursor-pointer"
