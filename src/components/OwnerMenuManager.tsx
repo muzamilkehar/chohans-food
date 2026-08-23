@@ -21,11 +21,16 @@ import {
   EyeOff,
   Copy,
   Sliders,
-  Utensils
+  Utensils,
+  Layers,
+  Clock,
+  Receipt,
+  FolderPlus
 } from 'lucide-react';
 import { useMenu } from '../context/MenuContext';
 import { MenuItem, DealItem } from '../types';
-import { CATEGORIES } from '../data/restaurantData';
+import { OwnerCategoriesTab } from './owner/OwnerCategoriesTab';
+import { OwnerOrdersTab } from './owner/OwnerOrdersTab';
 
 // Curated high quality food image presets for quick owner selection
 const FOOD_IMAGE_PRESETS = [
@@ -43,20 +48,26 @@ const FOOD_IMAGE_PRESETS = [
   { label: 'Fresh Milkshake / Chiller', url: 'https://images.unsplash.com/photo-1572490122747-3968b75cc699?auto=format&fit=crop&w=800&q=80' },
 ];
 
+export type OwnerTabType = 'items' | 'deals' | 'categories' | 'orders' | 'editor' | 'settings';
+
 interface OwnerMenuManagerProps {
   isOpen: boolean;
   onClose: () => void;
   initialEditItem?: MenuItem | null;
+  initialTab?: OwnerTabType;
 }
 
 export const OwnerMenuManager: React.FC<OwnerMenuManagerProps> = ({ 
   isOpen, 
   onClose,
-  initialEditItem = null
+  initialEditItem = null,
+  initialTab = 'items'
 }) => {
   const {
     menuItems,
     deals,
+    categories,
+    orders,
     isOwnerMode,
     loginOwner,
     logoutOwner,
@@ -74,9 +85,16 @@ export const OwnerMenuManager: React.FC<OwnerMenuManagerProps> = ({
   } = useMenu();
 
   // Navigation tab inside manager
-  const [activeTab, setActiveTab] = useState<'items' | 'deals' | 'editor' | 'settings'>('items');
+  const [activeTab, setActiveTab] = useState<OwnerTabType>(initialTab);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategoryFilter, setSelectedCategoryFilter] = useState('all');
+
+  // Sync tab when initialTab changes
+  React.useEffect(() => {
+    if (initialTab) {
+      setActiveTab(initialTab);
+    }
+  }, [initialTab]);
 
   // PIN login states
   const [enteredPin, setEnteredPin] = useState('');
@@ -114,6 +132,8 @@ export const OwnerMenuManager: React.FC<OwnerMenuManagerProps> = ({
   // PIN change state
   const [currentPinInput, setCurrentPinInput] = useState('');
   const [newPinInput, setNewPinInput] = useState('');
+  const [confirmPinInput, setConfirmPinInput] = useState('');
+  const [showPinFields, setShowPinFields] = useState(false);
   const [pinChangeMsg, setPinChangeMsg] = useState<{ success: boolean; text: string } | null>(null);
 
   // Status toasts & delete confirm
@@ -365,11 +385,30 @@ export const OwnerMenuManager: React.FC<OwnerMenuManagerProps> = ({
   const handleChangePin = (e: React.FormEvent) => {
     e.preventDefault();
     setPinChangeMsg(null);
-    const res = changeOwnerPin(currentPinInput, newPinInput);
+    const trimmedCurrent = currentPinInput.trim();
+    const trimmedNew = newPinInput.trim();
+    const trimmedConfirm = confirmPinInput.trim();
+
+    if (!trimmedCurrent) {
+      setPinChangeMsg({ success: false, text: 'Please enter your current passcode.' });
+      return;
+    }
+    if (!trimmedNew || trimmedNew.length < 4) {
+      setPinChangeMsg({ success: false, text: 'New passcode must be at least 4 characters or digits.' });
+      return;
+    }
+    if (trimmedNew !== trimmedConfirm) {
+      setPinChangeMsg({ success: false, text: 'New passcode and confirmation do not match.' });
+      return;
+    }
+
+    const res = changeOwnerPin(trimmedCurrent, trimmedNew);
     setPinChangeMsg({ success: res.success, text: res.message });
     if (res.success) {
       setCurrentPinInput('');
       setNewPinInput('');
+      setConfirmPinInput('');
+      showToast('Owner passcode successfully updated!');
     }
   };
 
@@ -456,7 +495,7 @@ export const OwnerMenuManager: React.FC<OwnerMenuManagerProps> = ({
                   <input
                     type="password"
                     autoFocus
-                    placeholder="Enter owner PIN"
+                    placeholder="Enter passcode"
                     value={enteredPin}
                     onChange={(e) => setEnteredPin(e.target.value)}
                     className="w-full px-4 py-3 rounded-2xl bg-gray-50 border border-gray-200 text-gray-900 text-sm font-bold tracking-widest text-center focus:border-[#B91C1C] focus:outline-none focus:bg-white"
@@ -467,10 +506,6 @@ export const OwnerMenuManager: React.FC<OwnerMenuManagerProps> = ({
                       {loginError}
                     </p>
                   )}
-                </div>
-
-                <div className="p-3 bg-amber-50 rounded-2xl border border-amber-200 text-[11px] text-amber-900 font-medium">
-                  <strong>💡 Owner Quick Access:</strong> Default PIN is <code className="font-mono font-bold bg-amber-100 px-1 py-0.5 rounded">1234</code> (or <code className="font-mono font-bold bg-amber-100 px-1 py-0.5 rounded">chohan123</code>).
                 </div>
 
                 <button
@@ -489,10 +524,10 @@ export const OwnerMenuManager: React.FC<OwnerMenuManagerProps> = ({
             
             {/* Top Navigation Tabs */}
             <div className="bg-white border-b border-gray-200 px-4 sm:px-6 py-2.5 flex items-center justify-between gap-2 overflow-x-auto shrink-0">
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-1.5 sm:gap-2">
                 <button
                   onClick={() => setActiveTab('items')}
-                  className={`px-4 py-2 rounded-full text-xs font-black uppercase tracking-wider transition-all flex items-center gap-2 cursor-pointer ${
+                  className={`px-3.5 sm:px-4 py-2 rounded-full text-xs font-black uppercase tracking-wider transition-all flex items-center gap-1.5 cursor-pointer whitespace-nowrap ${
                     activeTab === 'items'
                       ? 'bg-[#111827] text-white shadow-sm'
                       : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
@@ -506,41 +541,71 @@ export const OwnerMenuManager: React.FC<OwnerMenuManagerProps> = ({
 
                 <button
                   onClick={() => setActiveTab('deals')}
-                  className={`px-4 py-2 rounded-full text-xs font-black uppercase tracking-wider transition-all flex items-center gap-2 cursor-pointer ${
+                  className={`px-3.5 sm:px-4 py-2 rounded-full text-xs font-black uppercase tracking-wider transition-all flex items-center gap-1.5 cursor-pointer whitespace-nowrap ${
                     activeTab === 'deals'
                       ? 'bg-[#111827] text-white shadow-sm'
                       : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
                   }`}
                 >
-                  <span>Deals & Combos</span>
+                  <span>Deals</span>
                   <span className="px-1.5 py-0.5 rounded-full text-[10px] bg-white/20 font-bold">
                     {deals.length}
                   </span>
                 </button>
 
                 <button
+                  onClick={() => setActiveTab('categories')}
+                  className={`px-3.5 sm:px-4 py-2 rounded-full text-xs font-black uppercase tracking-wider transition-all flex items-center gap-1.5 cursor-pointer whitespace-nowrap ${
+                    activeTab === 'categories'
+                      ? 'bg-[#111827] text-white shadow-sm'
+                      : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                  }`}
+                >
+                  <Layers className="w-3.5 h-3.5" />
+                  <span>Categories</span>
+                  <span className="px-1.5 py-0.5 rounded-full text-[10px] bg-white/20 font-bold">
+                    {categories.length}
+                  </span>
+                </button>
+
+                <button
+                  onClick={() => setActiveTab('orders')}
+                  className={`px-3.5 sm:px-4 py-2 rounded-full text-xs font-black uppercase tracking-wider transition-all flex items-center gap-1.5 cursor-pointer whitespace-nowrap ${
+                    activeTab === 'orders'
+                      ? 'bg-[#111827] text-white shadow-sm'
+                      : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                  }`}
+                >
+                  <Clock className="w-3.5 h-3.5" />
+                  <span>Order Log</span>
+                  <span className="px-1.5 py-0.5 rounded-full text-[10px] bg-white/20 font-bold">
+                    {orders.length}
+                  </span>
+                </button>
+
+                <button
                   onClick={handleStartNewItem}
-                  className={`px-4 py-2 rounded-full text-xs font-black uppercase tracking-wider transition-all flex items-center gap-1.5 cursor-pointer ${
+                  className={`px-3.5 sm:px-4 py-2 rounded-full text-xs font-black uppercase tracking-wider transition-all flex items-center gap-1.5 cursor-pointer whitespace-nowrap ${
                     activeTab === 'editor' && !editingItemId
                       ? 'bg-[#B91C1C] text-white shadow-sm'
                       : 'bg-red-50 text-[#B91C1C] hover:bg-red-100 border border-red-200'
                   }`}
                 >
                   <Plus className="w-3.5 h-3.5 stroke-[3]" />
-                  <span>Add New Item</span>
+                  <span className="hidden sm:inline">Add Dish</span>
                 </button>
               </div>
 
               <button
                 onClick={() => setActiveTab('settings')}
-                className={`px-3 py-2 rounded-full text-xs font-bold uppercase tracking-wider transition-all flex items-center gap-1.5 cursor-pointer ${
+                className={`px-3 py-2 rounded-full text-xs font-bold uppercase tracking-wider transition-all flex items-center gap-1.5 cursor-pointer shrink-0 ${
                   activeTab === 'settings'
                     ? 'bg-gray-800 text-white'
                     : 'text-gray-500 hover:text-gray-900 hover:bg-gray-100'
                 }`}
               >
                 <Sliders className="w-3.5 h-3.5" />
-                <span className="hidden sm:inline">Settings & Backup</span>
+                <span className="hidden md:inline">Settings & Passcode</span>
               </button>
             </div>
 
@@ -567,7 +632,7 @@ export const OwnerMenuManager: React.FC<OwnerMenuManagerProps> = ({
                       className="px-3 py-2 rounded-xl bg-white border border-gray-200 text-xs font-bold text-gray-700 focus:outline-none"
                     >
                       <option value="all">All Categories ({menuItems.length})</option>
-                      {CATEGORIES.filter(c => c.id !== 'all').map(c => (
+                      {categories.map(c => (
                         <option key={c.id} value={c.id}>{c.name}</option>
                       ))}
                     </select>
@@ -914,6 +979,16 @@ export const OwnerMenuManager: React.FC<OwnerMenuManagerProps> = ({
               </div>
             )}
 
+            {/* TAB: CUSTOM CATEGORIES MANAGEMENT */}
+            {activeTab === 'categories' && (
+              <OwnerCategoriesTab />
+            )}
+
+            {/* TAB: ORDERS HISTORY & KITCHEN SALES LOG */}
+            {activeTab === 'orders' && (
+              <OwnerOrdersTab />
+            )}
+
             {/* TAB 3: FULL ITEM CREATOR & SURGICAL EDITOR */}
             {activeTab === 'editor' && (
               <div className="flex-1 overflow-y-auto p-4 sm:p-6 bg-gray-50 scrollbar-thin scrollbar-thumb-gray-300">
@@ -984,20 +1059,29 @@ export const OwnerMenuManager: React.FC<OwnerMenuManagerProps> = ({
 
                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                       <div>
-                        <label className="block text-xs font-bold text-gray-700 mb-1">
-                          Menu Category *
-                        </label>
+                        <div className="flex items-center justify-between mb-1">
+                          <label className="text-xs font-bold text-gray-700">
+                            Menu Category *
+                          </label>
+                          <button
+                            type="button"
+                            onClick={() => setActiveTab('categories')}
+                            className="text-[11px] font-bold text-[#B91C1C] hover:underline flex items-center gap-0.5 cursor-pointer"
+                          >
+                            <FolderPlus className="w-3 h-3" />
+                            <span>+ New</span>
+                          </button>
+                        </div>
                         <select
                           value={formCategory}
                           onChange={(e) => setFormCategory(e.target.value)}
                           className="w-full px-3.5 py-2.5 rounded-xl bg-gray-50 border border-gray-200 text-xs font-bold text-gray-900 focus:border-[#B91C1C] focus:bg-white focus:outline-none"
                         >
-                          <option value="broast">Signature Broast</option>
-                          <option value="pizza">Handcrafted Pizza</option>
-                          <option value="burgers">Burgers & Sandwiches</option>
-                          <option value="fries">Loaded Fries & Sides</option>
-                          <option value="beverages">Drinks & Shakes</option>
-                          <option value="deals">Deals & Combos</option>
+                          {categories.map((c) => (
+                            <option key={c.id} value={c.id}>
+                              {c.name} {c.urduName ? `(${c.urduName})` : ''}
+                            </option>
+                          ))}
                         </select>
                       </div>
 
@@ -1320,45 +1404,76 @@ export const OwnerMenuManager: React.FC<OwnerMenuManagerProps> = ({
                 
                 {/* Change PIN Card */}
                 <div className="bg-white p-6 rounded-3xl border border-gray-200 shadow-sm space-y-4 max-w-xl">
-                  <div className="flex items-center gap-2">
-                    <Key className="w-4 h-4 text-[#B91C1C]" />
-                    <h4 className="font-black text-gray-900 text-sm uppercase tracking-wider">Change Owner Passcode / PIN</h4>
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <Key className="w-4 h-4 text-[#B91C1C]" />
+                      <h4 className="font-black text-gray-900 text-sm uppercase tracking-wider">Change Owner Passcode / PIN</h4>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setShowPinFields(!showPinFields)}
+                      className="text-xs text-gray-500 hover:text-gray-900 font-semibold flex items-center gap-1 cursor-pointer"
+                    >
+                      {showPinFields ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                      <span>{showPinFields ? 'Hide Passcode' : 'Show Passcode'}</span>
+                    </button>
                   </div>
 
-                  <form onSubmit={handleChangePin} className="space-y-3">
+                  <form onSubmit={handleChangePin} className="space-y-3.5">
                     <div>
-                      <label className="block text-xs font-bold text-gray-700 mb-1">Current PIN</label>
+                      <label className="block text-xs font-bold text-gray-700 mb-1">Current Passcode</label>
                       <input
-                        type="password"
-                        placeholder="Current PIN (default: 1234)"
+                        type={showPinFields ? 'text' : 'password'}
+                        required
+                        placeholder="Enter your current passcode"
                         value={currentPinInput}
                         onChange={(e) => setCurrentPinInput(e.target.value)}
-                        className="w-full px-3.5 py-2 rounded-xl bg-gray-50 border border-gray-200 text-xs font-bold text-gray-900 focus:outline-none"
+                        className="w-full px-3.5 py-2.5 rounded-xl bg-gray-50 border border-gray-200 text-xs font-bold text-gray-900 focus:outline-none focus:bg-white focus:border-[#B91C1C]"
                       />
                     </div>
-                    <div>
-                      <label className="block text-xs font-bold text-gray-700 mb-1">New PIN (min 4 digits)</label>
-                      <input
-                        type="password"
-                        placeholder="New PIN"
-                        value={newPinInput}
-                        onChange={(e) => setNewPinInput(e.target.value)}
-                        className="w-full px-3.5 py-2 rounded-xl bg-gray-50 border border-gray-200 text-xs font-bold text-gray-900 focus:outline-none"
-                      />
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      <div>
+                        <label className="block text-xs font-bold text-gray-700 mb-1">New Passcode</label>
+                        <input
+                          type={showPinFields ? 'text' : 'password'}
+                          required
+                          placeholder="New passcode (min 4 digits)"
+                          value={newPinInput}
+                          onChange={(e) => setNewPinInput(e.target.value)}
+                          className="w-full px-3.5 py-2.5 rounded-xl bg-gray-50 border border-gray-200 text-xs font-bold text-gray-900 focus:outline-none focus:bg-white focus:border-[#B91C1C]"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-bold text-gray-700 mb-1">Confirm New Passcode</label>
+                        <input
+                          type={showPinFields ? 'text' : 'password'}
+                          required
+                          placeholder="Re-enter new passcode"
+                          value={confirmPinInput}
+                          onChange={(e) => setConfirmPinInput(e.target.value)}
+                          className="w-full px-3.5 py-2.5 rounded-xl bg-gray-50 border border-gray-200 text-xs font-bold text-gray-900 focus:outline-none focus:bg-white focus:border-[#B91C1C]"
+                        />
+                      </div>
                     </div>
 
                     {pinChangeMsg && (
-                      <p className={`text-xs font-bold ${pinChangeMsg.success ? 'text-emerald-600' : 'text-red-600'}`}>
-                        {pinChangeMsg.text}
-                      </p>
+                      <div className={`p-3 rounded-xl text-xs font-bold flex items-center gap-2 ${
+                        pinChangeMsg.success ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-red-50 text-red-600 border border-red-200'
+                      }`}>
+                        {pinChangeMsg.success ? <Check className="w-4 h-4 text-emerald-600 shrink-0" /> : <AlertCircle className="w-4 h-4 text-red-600 shrink-0" />}
+                        <span>{pinChangeMsg.text}</span>
+                      </div>
                     )}
 
-                    <button
-                      type="submit"
-                      className="px-5 py-2.5 rounded-full bg-[#111827] hover:bg-black text-white text-xs font-black uppercase tracking-wider cursor-pointer"
-                    >
-                      Update Passcode
-                    </button>
+                    <div className="pt-1">
+                      <button
+                        type="submit"
+                        className="px-6 py-2.5 rounded-full bg-[#111827] hover:bg-[#B91C1C] text-white text-xs font-black uppercase tracking-wider transition-colors cursor-pointer shadow-sm"
+                      >
+                        Update Passcode
+                      </button>
+                    </div>
                   </form>
                 </div>
 

@@ -12,7 +12,7 @@ export const FeaturedSpecials: React.FC<FeaturedSpecialsProps> = ({ onSelectItem
   const { menuItems } = useMenu();
 
   // Find signature items or fallback to first 4 popular items
-  const featuredIds = ['broast-quarter', 'pizza-tikka-special', 'burger-crispy-zinger', 'fries-loaded-pizza'];
+  const featuredIds = ['pizza-chohans-special', 'broast-chest-piece', 'burger-zinger', 'fries-pizza'];
   let featuredItems = menuItems.filter(item => featuredIds.includes(item.id));
   
   if (featuredItems.length === 0) {

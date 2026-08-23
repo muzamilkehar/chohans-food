@@ -9,7 +9,8 @@ import {
   MessageCircle,
   Lock,
   Unlock,
-  Sliders
+  Sliders,
+  Clock
 } from 'lucide-react';
 import { RESTAURANT_INFO } from '../data/restaurantData';
 import { CartItem } from '../types';
@@ -20,14 +21,16 @@ interface HeaderProps {
   onOpenCart: () => void;
   onOpenOrderModal?: () => void;
   onOpenOwnerManager?: () => void;
+  onOpenOrderHistory?: () => void;
 }
 
 export const Header: React.FC<HeaderProps> = ({ 
   cartItems, 
   onOpenCart,
-  onOpenOwnerManager 
+  onOpenOwnerManager,
+  onOpenOrderHistory,
 }) => {
-  const { isOwnerMode } = useMenu();
+  const { isOwnerMode, orders } = useMenu();
   const [isScrolled, setIsScrolled] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [isOpenNow, setIsOpenNow] = useState(true);
@@ -165,6 +168,23 @@ export const Header: React.FC<HeaderProps> = ({
 
           {/* Action CTAs */}
           <div className="flex items-center gap-2 sm:gap-3">
+            {/* Orders History Button */}
+            {onOpenOrderHistory && (
+              <button
+                onClick={onOpenOrderHistory}
+                className="inline-flex items-center gap-1.5 px-3 py-2 rounded-full text-xs font-bold uppercase tracking-wider bg-gray-100 hover:bg-gray-200 text-gray-700 hover:text-black border border-gray-200 transition-colors cursor-pointer"
+                title="View Past Orders"
+              >
+                <Clock className="w-3.5 h-3.5 text-[#B91C1C]" />
+                <span className="hidden sm:inline">Orders</span>
+                {orders.length > 0 && (
+                  <span className="w-4 h-4 rounded-full bg-[#B91C1C] text-white text-[10px] font-black flex items-center justify-center">
+                    {orders.length}
+                  </span>
+                )}
+              </button>
+            )}
+
             {/* Owner Portal quick launcher if active */}
             {isOwnerMode && (
               <button
@@ -232,6 +252,19 @@ export const Header: React.FC<HeaderProps> = ({
             </div>
 
             <div className="pt-3 border-t border-gray-100 flex flex-col gap-2">
+              {onOpenOrderHistory && (
+                <button
+                  onClick={() => {
+                    setMobileMenuOpen(false);
+                    onOpenOrderHistory();
+                  }}
+                  className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl bg-gray-100 hover:bg-gray-200 text-gray-900 font-bold text-xs uppercase tracking-wider"
+                >
+                  <Clock className="w-4 h-4 text-[#B91C1C]" />
+                  <span>Order History & Receipts {orders.length > 0 ? `(${orders.length})` : ''}</span>
+                </button>
+              )}
+
               <button
                 onClick={() => {
                   setMobileMenuOpen(false);

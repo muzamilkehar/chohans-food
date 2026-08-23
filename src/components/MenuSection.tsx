@@ -18,16 +18,17 @@ import {
   Unlock,
   Eye,
   EyeOff,
-  Sliders
+  Sliders,
+  FolderPlus,
+  UtensilsCrossed
 } from 'lucide-react';
-import { CATEGORIES } from '../data/restaurantData';
 import { MenuItem } from '../types';
 import { useMenu } from '../context/MenuContext';
 
 interface MenuSectionProps {
   onSelectItem: (item: MenuItem) => void;
   onAddToCart: (item: MenuItem) => void;
-  onOpenOwnerManager?: (itemToEdit?: MenuItem) => void;
+  onOpenOwnerManager?: (itemToEdit?: MenuItem, targetTab?: 'items' | 'deals' | 'categories' | 'orders' | 'editor' | 'settings') => void;
 }
 
 export const MenuSection: React.FC<MenuSectionProps> = ({ 
@@ -36,6 +37,7 @@ export const MenuSection: React.FC<MenuSectionProps> = ({
 }) => {
   const { 
     menuItems, 
+    categories,
     isOwnerMode, 
     toggleItemAvailability, 
     deleteMenuItem 
@@ -45,9 +47,16 @@ export const MenuSection: React.FC<MenuSectionProps> = ({
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [activeFilter, setActiveFilter] = useState<'all' | 'popular' | 'spicy' | 'budget'>('all');
 
+  const allDisplayCategories = useMemo(() => {
+    return [
+      { id: 'all', name: 'All Items', icon: 'Sparkles', urduName: 'تمام ڈشز' },
+      ...categories
+    ];
+  }, [categories]);
+
   const filteredItems = useMemo(() => {
     return menuItems.filter((item) => {
-      const matchesCategory = activeCategory === 'all' || item.category === activeCategory;
+      const matchesCategory = activeCategory === 'all' || item.category.toLowerCase() === activeCategory.toLowerCase();
       const q = searchQuery.toLowerCase().trim();
       const matchesSearch = !q || 
         item.name.toLowerCase().includes(q) ||
@@ -64,7 +73,7 @@ export const MenuSection: React.FC<MenuSectionProps> = ({
     });
   }, [menuItems, activeCategory, searchQuery, activeFilter]);
 
-  const getCategoryIcon = (iconName: string) => {
+  const getCategoryIcon = (iconName?: string) => {
     switch (iconName) {
       case 'Flame': return <Flame className="w-4 h-4" />;
       case 'Drumstick': return <Drumstick className="w-4 h-4" />;
@@ -72,6 +81,7 @@ export const MenuSection: React.FC<MenuSectionProps> = ({
       case 'Sandwich': return <Sandwich className="w-4 h-4" />;
       case 'Utensils': return <Utensils className="w-4 h-4" />;
       case 'Coffee': return <Coffee className="w-4 h-4" />;
+      case 'UtensilsCrossed': return <UtensilsCrossed className="w-4 h-4" />;
       default: return <Sparkles className="w-4 h-4" />;
     }
   };
@@ -169,11 +179,11 @@ export const MenuSection: React.FC<MenuSectionProps> = ({
 
         {/* Category Pill Tabs */}
         <div className="flex items-center gap-2 overflow-x-auto pb-3 mb-6 scrollbar-none">
-          {CATEGORIES.map((cat) => {
-            const isActive = activeCategory === cat.id;
+          {allDisplayCategories.map((cat) => {
+            const isActive = activeCategory.toLowerCase() === cat.id.toLowerCase();
             const categoryCount = cat.id === 'all' 
               ? menuItems.length 
-              : menuItems.filter(i => i.category === cat.id).length;
+              : menuItems.filter(i => i.category.toLowerCase() === cat.id.toLowerCase()).length;
 
             return (
               <button
@@ -197,6 +207,18 @@ export const MenuSection: React.FC<MenuSectionProps> = ({
               </button>
             );
           })}
+
+          {/* If Owner Mode, allow direct + Add Category button */}
+          {isOwnerMode && onOpenOwnerManager && (
+            <button
+              onClick={() => onOpenOwnerManager(undefined, 'categories')}
+              className="flex items-center gap-1.5 px-4 py-2.5 rounded-full text-xs font-bold uppercase tracking-wider whitespace-nowrap transition-all cursor-pointer border border-dashed border-red-300 bg-red-50/50 hover:bg-red-100 text-[#B91C1C]"
+              title="Add or Manage Categories"
+            >
+              <FolderPlus className="w-3.5 h-3.5" />
+              <span>+ Category</span>
+            </button>
+          )}
         </div>
 
         {/* Quick Filter Tags (Popular, Spicy, Budget) */}

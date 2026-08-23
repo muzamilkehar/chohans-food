@@ -58,3 +58,29 @@ export interface DealItem {
   badge?: string;
   isAvailable?: boolean;
 }
+
+export interface MenuCategory {
+  id: string;
+  name: string;
+  urduName?: string;
+  icon?: string;
+  description?: string;
+  isCustom?: boolean;
+}
+
+export interface OrderRecord {
+  id: string;
+  orderNumber: string;
+  createdAt: string;
+  orderType: 'delivery' | 'takeaway';
+  customerName: string;
+  customerPhone: string;
+  deliveryAddress?: string;
+  orderNotes?: string;
+  items: CartItem[];
+  subtotal: number;
+  deliveryFee: number;
+  grandTotal: number;
+  status: 'pending' | 'preparing' | 'on_the_way' | 'delivered' | 'cancelled';
+  receiptText: string;
+}

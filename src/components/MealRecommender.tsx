@@ -15,86 +15,86 @@ export const MealRecommender: React.FC<MealRecommenderProps> = ({ onAddDealToCar
 
   const getRecommendation = () => {
     if (groupSize === 'party') {
-      const deal = deals.find(d => d.id === 'deal-4-family-mega') || deals[deals.length - 1];
+      const deal = deals.find(d => d.id === 'deal-11') || deals.find(d => d.id === 'pizza-deal-4') || deals[0];
       return {
-        title: deal?.title || "Chohan's Mega Party Platter",
-        description: "The ultimate Shikarpur feast with 13\" Large Pizza, 4 Pcs Crispy Broast, Loaded Pizza Fries and 1.5L soft drink.",
-        price: deal ? deal.price : 3450,
+        title: deal?.title || "Deal 11: 4 Zingers Family Party Box",
+        description: "4 Crispy Zinger Burgers + 2 Regular Fries + 1.5 Liter Chilled Soft Drink.",
+        price: deal ? deal.price : 1450,
         deal: deal,
-        highlights: ["Serves 4-6", "Save Rs 500", "Large Tikka Pizza", "4x Golden Broast Pieces"]
+        highlights: ["Serves 4", "4x Zinger Burgers", "2x Fries Included", "1.5L Cold Drink"]
       };
     }
 
     if (groupSize === 'family') {
       if (craving === 'pizza' || craving === 'broast') {
-        const deal = deals.find(d => d.id === 'deal-2-pizza-feast') || deals[1] || deals[0];
+        const deal = deals.find(d => d.id === 'pizza-deal-2') || deals.find(d => d.id === 'super-deal-1') || deals[0];
         return {
-          title: deal?.title || "Deal 2: Shikarpur Pizza & Broast Feast",
-          description: "Perfect harmony of a 10\" Medium Tikka Pizza + 2 Pcs Golden Broast + Hot Crinkle Fries + 1L Beverage.",
-          price: deal ? deal.price : 1750,
+          title: deal?.title || "Pizza Deal 2: 2 Medium Pizzas Feast",
+          description: "2 Fresh Medium Pizzas of your choice with 1.5 Liter cold drink.",
+          price: deal ? deal.price : 2100,
           deal: deal,
-          highlights: ["Serves 2-3", "10\" Tikka Pizza", "2x Broasted Chicken", "Hot Fries"]
+          highlights: ["Serves 3-4", "2x Medium Pizzas", "1.5L Family Drink", "Save Rs 200"]
         };
       }
-      const item = menuItems.find(m => m.id === 'broast-family-platter') || menuItems.find(m => m.category === 'broast') || menuItems[0];
+      const deal = deals.find(d => d.id === 'super-deal-2') || deals[0];
       return {
-        title: item?.name || "Grand Broast Platter (8 Pcs)",
-        description: item?.description || "8 pieces of signature golden crispy pressure-fried chicken, jumbo fries, 4 buns, garlic dips & 1.5L drink.",
-        price: item ? item.price : 3200,
-        item: item,
-        highlights: ["Serves 4-5", "Full Family Size", "Crispy Chicken Pieces", "Free Dips & Buns"]
+        title: deal?.title || "Super Deal 2: Large Pizza, Wings & Drink",
+        description: "1 Large Pizza + 4 Crispy Wings + 1.5 Liter Chilled Soft Drink.",
+        price: deal ? deal.price : 1700,
+        deal: deal,
+        highlights: ["Serves 3-4", "1x Large Pizza", "4x Crispy Wings", "1.5L Drink"]
       };
     }
 
     if (groupSize === 'duo') {
       if (craving === 'zinger') {
-        const deal = deals.find(d => d.id === 'deal-3-zinger-duo') || deals[0];
+        const deal = deals.find(d => d.id === 'deal-4') || deals[0];
         return {
-          title: deal?.title || "Deal 3: Double Zinger Crunch Box",
-          description: "2 Crispy fried Zinger burgers, seasoned French fries & 2 cold drinks.",
-          price: deal ? deal.price : 1100,
+          title: deal?.title || "Deal 4: 2 Zinger Burgers Deal",
+          description: "2 Crispy fried Zinger burgers + 1 Regular portion of French fries.",
+          price: deal ? deal.price : 650,
           deal: deal,
-          highlights: ["Serves 2", "2x Zinger Burgers", "Crispy Fries + Drinks"]
+          highlights: ["Serves 2", "2x Zinger Burgers", "Regular Fries Included"]
         };
       }
-      const deal = deals.find(d => d.id === 'deal-1-broast-duo') || deals[0];
+      const deal = deals.find(d => d.id === 'super-deal-1') || deals.find(d => d.id === 'deal-10') || deals[0];
       return {
-        title: deal?.title || "Deal 1: Broast Lover's Combo",
-        description: "2 pieces golden chicken broast, large masala crinkle fries, 2 dinner buns, garlic sauces & 2 drinks.",
-        price: deal ? deal.price : 1150,
+        title: deal?.title || "Super Deal 1: Medium Pizza, Wings & Drink",
+        description: "1 Fresh Medium Pizza + 4 Crispy Wings + 1 Liter Cold Drink.",
+        price: deal ? deal.price : 1300,
         deal: deal,
-        highlights: ["Serves 1-2", "2 Pcs Broast", "Garlic Dips & Buns"]
+        highlights: ["Serves 2-3", "1x Medium Pizza", "4x Crispy Wings", "1L Soft Drink"]
       };
     }
 
     // Solo
     if (craving === 'pizza') {
-      const item = menuItems.find(m => m.id === 'pizza-tikka-special') || menuItems.find(m => m.category === 'pizza') || menuItems[0];
+      const item = menuItems.find(m => m.id === 'pizza-chicken-tikka') || menuItems.find(m => m.category === 'pizza') || menuItems[0];
       return {
-        title: item?.name || "Shikarpur Special Tikka Pizza",
-        description: item?.description || "Personal 7-inch pan pizza loaded with smoky tandoori chicken chunks and gooey mozzarella.",
-        price: item ? item.price : 550,
+        title: item?.name || "Chicken Tikka Pizza",
+        description: item?.description || "Traditional taste of spicy chicken with Onion, covered with cheese.",
+        price: item ? (item.sizes ? item.sizes[0].price : item.price) : 500,
         item: item,
-        highlights: ["Personal Size", "Freshly Baked", "Smoky Tandoori Chicken"]
+        highlights: ["Small Size (Rs 500)", "Freshly Baked", "Authentic Tikka Flavors"]
       };
     }
     if (craving === 'zinger') {
-      const item = menuItems.find(m => m.id === 'burger-crispy-zinger') || menuItems.find(m => m.category === 'burgers') || menuItems[0];
+      const item = menuItems.find(m => m.id === 'burger-zinger') || menuItems.find(m => m.category === 'burgers') || menuItems[0];
       return {
-        title: item?.name || "Chohan's Signature Zinger Burger",
-        description: item?.description || "Crispy fried whole chicken thigh fillet with chili garlic mayo and toasted brioche bun.",
-        price: item ? item.price : 450,
+        title: item?.name || "Zinger Burger",
+        description: item?.description || "Crispy fried whole chicken fillet with spicy garlic mayo in toasted bun.",
+        price: item ? item.price : 300,
         item: item,
-        highlights: ["100% Real Chicken Thigh", "Extra Crunchy", "Spicy Garlic Sauce"]
+        highlights: ["Rs 300 Only", "Extra Crunchy Fillet", "Spicy Garlic Dressing"]
       };
     }
-    const item = menuItems.find(m => m.id === 'broast-quarter') || menuItems.find(m => m.category === 'broast') || menuItems[0];
+    const item = menuItems.find(m => m.id === 'broast-chest-piece') || menuItems.find(m => m.category === 'broast') || menuItems[0];
     return {
-      title: item?.name || "Chohan's Golden Chicken Broast (Quarter)",
-      description: item?.description || "Quarter pressure-fried crispy chicken with seasoned crinkle fries, garlic mayo and dip.",
-      price: item ? item.price : 480,
+      title: item?.name || "Chohan's Chicken Broast (Chest)",
+      description: item?.description || "Pressure-fried crispy chest piece broast with garlic mayo dip.",
+      price: item ? item.price : 450,
       item: item,
-      highlights: ["Quarter Chicken", "Crinkle Fries Included", "Garlic Mayo Dip"]
+      highlights: ["Chest Broast", "Ultra Crispy Skin", "Signature Garlic Dip"]
     };
   };
 

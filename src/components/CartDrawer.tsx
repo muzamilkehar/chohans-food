@@ -10,10 +10,15 @@ import {
   MapPin, 
   Phone, 
   MessageCircle, 
-  ShieldCheck
+  ShieldCheck,
+  Clock,
+  CheckCircle2,
+  Printer
 } from 'lucide-react';
-import { CartItem } from '../types';
+import { CartItem, OrderRecord } from '../types';
 import { RESTAURANT_INFO } from '../data/restaurantData';
+import { useMenu } from '../context/MenuContext';
+import { InvoiceModal } from './InvoiceModal';
 
 interface CartDrawerProps {
   isOpen: boolean;
@@ -22,6 +27,7 @@ interface CartDrawerProps {
   onUpdateQuantity: (cartItemId: string, newQuantity: number) => void;
   onRemoveItem: (cartItemId: string) => void;
   onClearCart: () => void;
+  onOpenOrderHistory?: () => void;
 }
 
 export const CartDrawer: React.FC<CartDrawerProps> = ({
@@ -31,14 +37,18 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
   onUpdateQuantity,
   onRemoveItem,
   onClearCart,
+  onOpenOrderHistory,
 }) => {
-  if (!isOpen) return null;
-
+  const { addOrder, orders } = useMenu();
   const [orderType, setOrderType] = useState<'delivery' | 'takeaway'>('delivery');
   const [customerName, setCustomerName] = useState('');
   const [customerPhone, setCustomerPhone] = useState('');
   const [deliveryAddress, setDeliveryAddress] = useState('');
   const [orderNotes, setOrderNotes] = useState('');
+  const [lastPlacedOrderNumber, setLastPlacedOrderNumber] = useState<string | null>(null);
+  const [invoiceOrder, setInvoiceOrder] = useState<OrderRecord | null>(null);
+
+  if (!isOpen) return null;
 
   const subtotal = cartItems.reduce((sum, item) => sum + item.itemTotal, 0);
   const deliveryFee = orderType === 'delivery' ? 100 : 0;
@@ -47,45 +57,90 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
   const handleWhatsAppOrder = () => {
     if (cartItems.length === 0) return;
 
-    let message = `*🍗 CHOHAN'S FASTFOOD - NEW ORDER 🍕*\n\n`;
-    message += `*Order Type:* ${orderType === 'delivery' ? '🚴 Home Delivery' : '🛍️ Takeaway / Pickup'}\n`;
+    const randomSuffix = Math.floor(1000 + Math.random() * 9000);
+    const orderNum = `CF-${randomSuffix}`;
+
+    const lines: string[] = [];
+
+    lines.push("CHOHAN'S FASTFOOD - ORDER RECEIPT");
+    lines.push(`Order ID: #${orderNum}`);
+    lines.push("Allah Wala Chowk, Shikarpur");
+    lines.push("");
+    lines.push(`Order Type: ${orderType === 'delivery' ? 'Home Delivery' : 'Takeaway / Pickup'}`);
     
     if (customerName.trim()) {
-      message += `*Customer Name:* ${customerName.trim()}\n`;
+      lines.push(`Customer Name: ${customerName.trim()}`);
     }
     if (customerPhone.trim()) {
-      message += `*Contact Phone:* ${customerPhone.trim()}\n`;
+      lines.push(`Contact Phone: ${customerPhone.trim()}`);
     }
     if (orderType === 'delivery' && deliveryAddress.trim()) {
-      message += `*Delivery Address:* ${deliveryAddress.trim()}, Shikarpur\n`;
+      lines.push(`Delivery Address: ${deliveryAddress.trim()}, Shikarpur`);
     }
-    
-    message += `\n*--- ORDER ITEMS ---*\n`;
+
+    lines.push("");
+    lines.push("----------------------------------------");
+    lines.push("ORDERED ITEMS");
+    lines.push("----------------------------------------");
+    lines.push("");
+
     cartItems.forEach((cItem, idx) => {
-      const sizeStr = cItem.selectedSize ? ` (${cItem.selectedSize.name})` : '';
-      message += `${idx + 1}. *${cItem.item.name}*${sizeStr} x${cItem.quantity} - Rs ${cItem.itemTotal}\n`;
-      
+      lines.push(`${idx + 1}. ${cItem.item.name}`);
+      if (cItem.selectedSize) {
+        lines.push(`   Size: ${cItem.selectedSize.name}`);
+      }
+      lines.push(`   Quantity: ${cItem.quantity}`);
+      lines.push(`   Price: Rs ${cItem.itemTotal.toLocaleString()}`);
+
       if (cItem.selectedAddOns.length > 0) {
-        message += `   _Add-ons: ${cItem.selectedAddOns.map(a => a.name).join(', ')}_\n`;
+        lines.push(`   Add-ons: ${cItem.selectedAddOns.map(a => a.name).join(', ')}`);
       }
-      if (cItem.specialInstructions) {
-        message += `   _Note: ${cItem.specialInstructions}_\n`;
+      if (cItem.specialInstructions && cItem.specialInstructions.trim()) {
+        lines.push(`   Item Note: ${cItem.specialInstructions.trim()}`);
       }
+      lines.push("");
     });
 
-    message += `\n*--- BILL SUMMARY ---*\n`;
-    message += `Subtotal: Rs ${subtotal.toLocaleString()}\n`;
+    lines.push("----------------------------------------");
+    lines.push("PAYMENT SUMMARY");
+    lines.push("----------------------------------------");
+    lines.push("");
+    lines.push(`Subtotal: Rs ${subtotal.toLocaleString()}`);
     if (orderType === 'delivery') {
-      message += `Delivery Fee: Rs ${deliveryFee}\n`;
+      lines.push(`Delivery Fee: Rs ${deliveryFee}`);
     }
-    message += `*Grand Total: Rs ${grandTotal.toLocaleString()}*\n`;
-    message += `*Payment:* Cash on Delivery / Counter\n`;
-    
+    lines.push(`Total Amount: Rs ${grandTotal.toLocaleString()}`);
+    lines.push(`Payment Method: ${orderType === 'delivery' ? 'Cash on Delivery' : 'Cash on Pickup / Counter'}`);
+
     if (orderNotes.trim()) {
-      message += `*Special Instructions:* ${orderNotes.trim()}\n`;
+      lines.push("");
+      lines.push(`Special Instructions: ${orderNotes.trim()}`);
     }
 
-    message += `\nThank you! Please confirm my order preparation.`;
+    lines.push("");
+    lines.push("----------------------------------------");
+    lines.push("Thank you for ordering with Chohan's Fastfood!");
+    lines.push("Please confirm my order preparation.");
+
+    const message = lines.join("\n");
+
+    // Save order to persistent Order History
+    addOrder({
+      orderNumber: orderNum,
+      orderType,
+      customerName: customerName.trim() || 'Valued Customer',
+      customerPhone: customerPhone.trim(),
+      deliveryAddress: orderType === 'delivery' ? deliveryAddress.trim() : undefined,
+      orderNotes: orderNotes.trim() || undefined,
+      items: [...cartItems],
+      subtotal,
+      deliveryFee,
+      grandTotal,
+      status: 'pending',
+      receiptText: message,
+    });
+
+    setLastPlacedOrderNumber(orderNum);
 
     const encodedMessage = encodeURIComponent(message);
     const whatsappUrl = `https://wa.me/${RESTAURANT_INFO.whatsappNumber}?text=${encodedMessage}`;
@@ -112,6 +167,20 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
             </div>
 
             <div className="flex items-center gap-2">
+              {orders.length > 0 && onOpenOrderHistory && (
+                <button
+                  onClick={() => {
+                    onClose();
+                    onOpenOrderHistory();
+                  }}
+                  className="inline-flex items-center gap-1 text-xs text-gray-700 hover:text-[#B91C1C] transition-colors px-2 py-1 bg-gray-100 hover:bg-red-50 rounded-lg font-bold"
+                  title="View Previous Orders"
+                >
+                  <Clock className="w-3.5 h-3.5" />
+                  <span>Orders ({orders.length})</span>
+                </button>
+              )}
+
               {cartItems.length > 0 && (
                 <button
                   onClick={onClearCart}
@@ -131,8 +200,46 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
           </div>
 
           {/* Cart Content */}
-          <div className="flex-1 overflow-y-auto p-5 space-y-6 scrollbar-thin scrollbar-thumb-gray-300 bg-[#f9fafb]">
+          <div className="flex-1 overflow-y-auto p-5 space-y-5 scrollbar-thin scrollbar-thumb-gray-300 bg-[#f9fafb]">
             
+            {/* Last Placed Order Notice */}
+            {lastPlacedOrderNumber && (
+              <div className="p-3.5 rounded-2xl bg-emerald-50 border border-emerald-200 text-emerald-900 space-y-2.5">
+                <div className="flex items-center gap-2">
+                  <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                  <span className="text-xs font-black">Order #{lastPlacedOrderNumber} Recorded!</span>
+                </div>
+                <p className="text-[11px] text-emerald-700 leading-relaxed">
+                  Your WhatsApp message was generated and saved to your local Order History.
+                </p>
+                <div className="flex items-center gap-2 pt-1 flex-wrap">
+                  <button
+                    onClick={() => {
+                      const matched = orders.find(o => o.orderNumber === lastPlacedOrderNumber);
+                      if (matched) setInvoiceOrder(matched);
+                    }}
+                    className="px-3 py-1.5 rounded-xl bg-emerald-800 hover:bg-emerald-900 text-white text-xs font-bold flex items-center gap-1.5 transition-colors cursor-pointer shadow-sm"
+                  >
+                    <Printer className="w-3.5 h-3.5" />
+                    <span>Print Invoice / Bill</span>
+                  </button>
+
+                  {onOpenOrderHistory && (
+                    <button
+                      onClick={() => {
+                        onClose();
+                        onOpenOrderHistory();
+                      }}
+                      className="text-xs font-bold text-emerald-800 underline hover:text-emerald-950 flex items-center gap-1 cursor-pointer px-1 py-1"
+                    >
+                      <Clock className="w-3 h-3" />
+                      <span>View History</span>
+                    </button>
+                  )}
+                </div>
+              </div>
+            )}
+
             {/* Order Type Toggle */}
             <div className="grid grid-cols-2 gap-2 bg-gray-200/80 p-1.5 rounded-2xl">
               <button
@@ -161,7 +268,7 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
 
             {/* Empty State */}
             {cartItems.length === 0 ? (
-              <div className="text-center py-16 space-y-3 bg-white p-6 rounded-3xl border border-gray-200 shadow-sm">
+              <div className="text-center py-12 space-y-3 bg-white p-6 rounded-3xl border border-gray-200 shadow-sm">
                 <div className="w-16 h-16 rounded-2xl bg-gray-100 flex items-center justify-center mx-auto text-gray-400">
                   <ShoppingBag className="w-8 h-8" />
                 </div>
@@ -169,12 +276,26 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
                 <p className="text-xs text-gray-500 max-w-xs mx-auto">
                   Add crispy broast, cheesy tikka pizza, or special deals from our menu to start your order!
                 </p>
-                <button
-                  onClick={onClose}
-                  className="mt-2 px-5 py-2.5 rounded-full bg-[#111827] text-white font-bold text-xs uppercase tracking-wider hover:bg-[#B91C1C] cursor-pointer"
-                >
-                  Browse Menu
-                </button>
+                <div className="flex flex-col sm:flex-row items-center justify-center gap-2 pt-2">
+                  <button
+                    onClick={onClose}
+                    className="px-5 py-2.5 rounded-full bg-[#111827] text-white font-bold text-xs uppercase tracking-wider hover:bg-[#B91C1C] cursor-pointer"
+                  >
+                    Browse Menu
+                  </button>
+                  {orders.length > 0 && onOpenOrderHistory && (
+                    <button
+                      onClick={() => {
+                        onClose();
+                        onOpenOrderHistory();
+                      }}
+                      className="px-4 py-2.5 rounded-full bg-red-50 text-[#B91C1C] border border-red-200 font-bold text-xs uppercase tracking-wider hover:bg-red-100 cursor-pointer flex items-center gap-1.5"
+                    >
+                      <Clock className="w-3.5 h-3.5" />
+                      <span>Past Orders ({orders.length})</span>
+                    </button>
+                  )}
+                </div>
               </div>
             ) : (
               /* Item List */
@@ -282,6 +403,14 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
                         className="w-full px-3 py-2 rounded-xl bg-gray-50 border border-gray-200 text-gray-900 text-xs placeholder-gray-400 focus:border-[#B91C1C] focus:outline-none"
                       />
                     )}
+
+                    <input
+                      type="text"
+                      placeholder="Special Instructions (e.g. extra ketchup, less spicy) [optional]"
+                      value={orderNotes}
+                      onChange={(e) => setOrderNotes(e.target.value)}
+                      className="w-full px-3 py-2 rounded-xl bg-gray-50 border border-gray-200 text-gray-900 text-xs placeholder-gray-400 focus:border-[#B91C1C] focus:outline-none"
+                    />
                   </div>
                 </div>
 
@@ -339,6 +468,13 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
 
         </div>
       </div>
+
+      {/* Invoice Print Modal */}
+      <InvoiceModal
+        order={invoiceOrder}
+        isOpen={Boolean(invoiceOrder)}
+        onClose={() => setInvoiceOrder(null)}
+      />
     </div>
   );
 };

@@ -1,10 +1,12 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import { MenuItem, DealItem } from '../types';
-import { MENU_ITEMS, DEALS_DATA } from '../data/restaurantData';
+import { MenuItem, DealItem, MenuCategory, OrderRecord } from '../types';
+import { MENU_ITEMS, DEALS_DATA, INITIAL_CATEGORIES } from '../data/restaurantData';
 
 interface MenuContextType {
   menuItems: MenuItem[];
   deals: DealItem[];
+  categories: MenuCategory[];
+  orders: OrderRecord[];
   isOwnerMode: boolean;
   ownerPin: string;
   loginOwner: (pin: string) => { success: boolean; message: string };
@@ -18,6 +20,13 @@ interface MenuContextType {
   updateDeal: (deal: DealItem) => void;
   deleteDeal: (id: string) => void;
   toggleDealAvailability: (id: string) => void;
+  addCategory: (category: Omit<MenuCategory, 'id'> & { id?: string }) => { success: boolean; message: string; category?: MenuCategory };
+  updateCategory: (category: MenuCategory) => void;
+  deleteCategory: (id: string) => { success: boolean; message: string };
+  addOrder: (order: Omit<OrderRecord, 'id' | 'orderNumber' | 'createdAt' | 'status'> & { id?: string; orderNumber?: string; createdAt?: string; status?: OrderRecord['status'] }) => OrderRecord;
+  updateOrderStatus: (orderId: string, status: OrderRecord['status']) => void;
+  deleteOrder: (orderId: string) => void;
+  clearAllOrders: () => void;
   resetToDefaultMenu: () => void;
   exportMenuData: () => string;
   importMenuData: (jsonStr: string) => { success: boolean; message: string };
@@ -25,10 +34,13 @@ interface MenuContextType {
 
 const MenuContext = createContext<MenuContextType | undefined>(undefined);
 
-const MENU_STORAGE_KEY = 'chohan_fastfood_custom_menu_v1';
-const DEALS_STORAGE_KEY = 'chohan_fastfood_custom_deals_v1';
-const OWNER_PIN_STORAGE_KEY = 'chohan_owner_pin';
+const MENU_STORAGE_KEY = 'chohan_fastfood_custom_menu_v2';
+const DEALS_STORAGE_KEY = 'chohan_fastfood_custom_deals_v2';
+const CATEGORIES_STORAGE_KEY = 'chohan_fastfood_custom_categories_v2';
+const ORDERS_STORAGE_KEY = 'chohan_fastfood_order_history_v1';
+const OWNER_PIN_STORAGE_KEY = 'chohan_owner_pin_v2';
 const OWNER_SESSION_KEY = 'chohan_owner_logged_in';
+const DEFAULT_OWNER_PIN = '0078';
 
 export const MenuProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   // Menu items state
@@ -59,12 +71,49 @@ export const MenuProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     return DEALS_DATA;
   });
 
-  // Owner state
+  // Categories state (built-in + user added custom categories)
+  const [categories, setCategories] = useState<MenuCategory[]>(() => {
+    try {
+      const saved = localStorage.getItem(CATEGORIES_STORAGE_KEY);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      }
+    } catch (e) {
+      console.error('Failed to load stored categories', e);
+    }
+    return INITIAL_CATEGORIES;
+  });
+
+  // Order history state
+  const [orders, setOrders] = useState<OrderRecord[]>(() => {
+    try {
+      const saved = localStorage.getItem(ORDERS_STORAGE_KEY);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed)) return parsed;
+      }
+    } catch (e) {
+      console.error('Failed to load order history', e);
+    }
+    return [];
+  });
+
+  // Owner state with 0078 default and storage migration
   const [ownerPin, setOwnerPin] = useState<string>(() => {
     try {
-      return localStorage.getItem(OWNER_PIN_STORAGE_KEY) || '1234';
+      const v2 = localStorage.getItem(OWNER_PIN_STORAGE_KEY);
+      if (v2 && v2.trim()) return v2.trim();
+
+      const old = localStorage.getItem('chohan_owner_pin');
+      if (old && old.trim() && old !== '1234' && old !== 'chohan123') {
+        localStorage.setItem(OWNER_PIN_STORAGE_KEY, old.trim());
+        return old.trim();
+      }
+      localStorage.setItem(OWNER_PIN_STORAGE_KEY, DEFAULT_OWNER_PIN);
+      return DEFAULT_OWNER_PIN;
     } catch {
-      return '1234';
+      return DEFAULT_OWNER_PIN;
     }
   });
 
@@ -93,19 +142,34 @@ export const MenuProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     }
   }, [deals]);
 
+  useEffect(() => {
+    try {
+      localStorage.setItem(CATEGORIES_STORAGE_KEY, JSON.stringify(categories));
+    } catch (e) {
+      console.error('Failed to save categories', e);
+    }
+  }, [categories]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(ORDERS_STORAGE_KEY, JSON.stringify(orders));
+    } catch (e) {
+      console.error('Failed to save orders', e);
+    }
+  }, [orders]);
+
   const loginOwner = (enteredPin: string) => {
     const trimmed = enteredPin.trim();
-    // Accept custom pin or fallback '1234' or 'chohan123'
-    if (trimmed === ownerPin || trimmed === '1234' || trimmed === 'chohan123') {
+    if (trimmed === ownerPin) {
       setIsOwnerMode(true);
       try {
         sessionStorage.setItem(OWNER_SESSION_KEY, 'true');
       } catch (e) {
         console.error(e);
       }
-      return { success: true, message: 'Welcome back, Owner! Menu Management Portal unlocked.' };
+      return { success: true, message: 'Welcome back! Owner portal unlocked.' };
     }
-    return { success: false, message: 'Incorrect PIN. Please check your passcode or use default PIN 1234.' };
+    return { success: false, message: 'Incorrect passcode. Please try again.' };
   };
 
   const logoutOwner = () => {
@@ -118,19 +182,22 @@ export const MenuProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   };
 
   const changeOwnerPin = (oldPin: string, newPin: string) => {
-    if (oldPin !== ownerPin && oldPin !== '1234' && oldPin !== 'chohan123') {
-      return { success: false, message: 'Current PIN is incorrect.' };
+    const trimmedOld = oldPin.trim();
+    const trimmedNew = newPin.trim();
+
+    if (trimmedOld !== ownerPin) {
+      return { success: false, message: 'Current passcode is incorrect.' };
     }
-    if (!newPin || newPin.length < 4) {
-      return { success: false, message: 'New PIN must be at least 4 characters.' };
+    if (!trimmedNew || trimmedNew.length < 4) {
+      return { success: false, message: 'New passcode must be at least 4 characters.' };
     }
-    setOwnerPin(newPin);
+    setOwnerPin(trimmedNew);
     try {
-      localStorage.setItem(OWNER_PIN_STORAGE_KEY, newPin);
+      localStorage.setItem(OWNER_PIN_STORAGE_KEY, trimmedNew);
     } catch (e) {
       console.error(e);
     }
-    return { success: true, message: 'Owner PIN successfully updated!' };
+    return { success: true, message: 'Passcode successfully updated!' };
   };
 
   // Add Item
@@ -197,13 +264,93 @@ export const MenuProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     }));
   };
 
+  // Add Custom Category
+  const addCategory = (cat: Omit<MenuCategory, 'id'> & { id?: string }) => {
+    const trimmedName = cat.name.trim();
+    if (!trimmedName) {
+      return { success: false, message: 'Category name is required.' };
+    }
+
+    const slug = cat.id?.trim() || trimmedName.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '') || `cat-${Date.now()}`;
+    
+    // Check duplicate
+    if (categories.some(c => c.id.toLowerCase() === slug.toLowerCase() || c.name.toLowerCase() === trimmedName.toLowerCase())) {
+      return { success: false, message: `Category "${trimmedName}" already exists.` };
+    }
+
+    const newCategory: MenuCategory = {
+      id: slug,
+      name: trimmedName,
+      urduName: cat.urduName?.trim() || undefined,
+      icon: cat.icon || 'UtensilsCrossed',
+      description: cat.description?.trim() || undefined,
+      isCustom: true,
+    };
+
+    setCategories(prev => [...prev, newCategory]);
+    return { success: true, message: `Category "${trimmedName}" created successfully!`, category: newCategory };
+  };
+
+  // Update Category
+  const updateCategory = (updatedCategory: MenuCategory) => {
+    setCategories(prev => prev.map(c => c.id === updatedCategory.id ? updatedCategory : c));
+  };
+
+  // Delete Category
+  const deleteCategory = (id: string) => {
+    // Check if category is built-in
+    const isBuiltIn = INITIAL_CATEGORIES.some(c => c.id === id);
+    if (isBuiltIn) {
+      return { success: false, message: 'Default restaurant categories cannot be removed, but can be customized.' };
+    }
+
+    setCategories(prev => prev.filter(c => c.id !== id));
+    // Optional: Keep items or reassign them to general category
+    return { success: true, message: 'Category deleted successfully.' };
+  };
+
+  // Order Management
+  const addOrder = (orderData: Omit<OrderRecord, 'id' | 'orderNumber' | 'createdAt' | 'status'> & { id?: string; orderNumber?: string; createdAt?: string; status?: OrderRecord['status'] }): OrderRecord => {
+    const randomSuffix = Math.floor(1000 + Math.random() * 9000);
+    const orderNumber = orderData.orderNumber || `CF-${randomSuffix}`;
+    const newOrder: OrderRecord = {
+      ...orderData,
+      id: orderData.id || `order-${Date.now()}-${randomSuffix}`,
+      orderNumber,
+      createdAt: orderData.createdAt || new Date().toISOString(),
+      status: orderData.status || 'pending',
+    };
+
+    setOrders(prev => [newOrder, ...prev]);
+    return newOrder;
+  };
+
+  const updateOrderStatus = (orderId: string, status: OrderRecord['status']) => {
+    setOrders(prev => prev.map(o => o.id === orderId ? { ...o, status } : o));
+  };
+
+  const deleteOrder = (orderId: string) => {
+    setOrders(prev => prev.filter(o => o.id !== orderId));
+  };
+
+  const clearAllOrders = () => {
+    setOrders([]);
+    try {
+      localStorage.removeItem(ORDERS_STORAGE_KEY);
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
   // Reset to Factory Menu
   const resetToDefaultMenu = () => {
     setMenuItems(MENU_ITEMS);
     setDeals(DEALS_DATA);
+    setCategories(INITIAL_CATEGORIES);
     try {
       localStorage.removeItem(MENU_STORAGE_KEY);
       localStorage.removeItem(DEALS_STORAGE_KEY);
+      localStorage.removeItem(CATEGORIES_STORAGE_KEY);
     } catch (e) {
       console.error(e);
     }
@@ -212,10 +359,12 @@ export const MenuProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   // Export JSON
   const exportMenuData = () => {
     return JSON.stringify({
-      version: 1,
+      version: 2,
       exportedAt: new Date().toISOString(),
+      categories,
       menuItems,
       deals,
+      orders,
     }, null, 2);
   };
 
@@ -223,13 +372,19 @@ export const MenuProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const importMenuData = (jsonStr: string) => {
     try {
       const parsed = JSON.parse(jsonStr);
+      if (parsed.categories && Array.isArray(parsed.categories)) {
+        setCategories(parsed.categories);
+      }
       if (parsed.menuItems && Array.isArray(parsed.menuItems)) {
         setMenuItems(parsed.menuItems);
       }
       if (parsed.deals && Array.isArray(parsed.deals)) {
         setDeals(parsed.deals);
       }
-      return { success: true, message: 'Menu data successfully imported!' };
+      if (parsed.orders && Array.isArray(parsed.orders)) {
+        setOrders(parsed.orders);
+      }
+      return { success: true, message: 'Data successfully imported!' };
     } catch (e) {
       return { success: false, message: 'Invalid JSON format. Please verify file.' };
     }
@@ -240,6 +395,8 @@ export const MenuProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       value={{
         menuItems,
         deals,
+        categories,
+        orders,
         isOwnerMode,
         ownerPin,
         loginOwner,
@@ -253,6 +410,13 @@ export const MenuProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         updateDeal,
         deleteDeal,
         toggleDealAvailability,
+        addCategory,
+        updateCategory,
+        deleteCategory,
+        addOrder,
+        updateOrderStatus,
+        deleteOrder,
+        clearAllOrders,
         resetToDefaultMenu,
         exportMenuData,
         importMenuData,

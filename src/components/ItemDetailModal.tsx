@@ -9,17 +9,15 @@ interface ItemDetailModalProps {
 }
 
 export const ItemDetailModal: React.FC<ItemDetailModalProps> = ({ item, onClose, onAddToCart }) => {
-  if (!item) return null;
-
   const [selectedSize, setSelectedSize] = useState<{ name: string; price: number } | undefined>(
-    item.sizes && item.sizes.length > 0 ? item.sizes[0] : undefined
+    item?.sizes && item.sizes.length > 0 ? item.sizes[0] : undefined
   );
   const [selectedAddOns, setSelectedAddOns] = useState<{ id: string; name: string; price: number }[]>([]);
   const [quantity, setQuantity] = useState(1);
   const [specialInstructions, setSpecialInstructions] = useState('');
 
   useEffect(() => {
-    if (item.sizes && item.sizes.length > 0) {
+    if (item?.sizes && item.sizes.length > 0) {
       setSelectedSize(item.sizes[0]);
     } else {
       setSelectedSize(undefined);
@@ -28,6 +26,8 @@ export const ItemDetailModal: React.FC<ItemDetailModalProps> = ({ item, onClose,
     setQuantity(1);
     setSpecialInstructions('');
   }, [item]);
+
+  if (!item) return null;
 
   const toggleAddOn = (addon: { id: string; name: string; price: number }) => {
     if (selectedAddOns.some(a => a.id === addon.id)) {

@@ -17,6 +17,7 @@ import { OwnerMenuManager } from './components/OwnerMenuManager';
 import { MenuItem, DealItem, CartItem } from './types';
 import { RESTAURANT_INFO } from './data/restaurantData';
 import { ShoppingBag, MessageCircle, Check } from 'lucide-react';
+import { OwnerTabType } from './components/OwnerMenuManager';
 
 function MainAppContent() {
   // Cart state stored in localStorage
@@ -36,6 +37,7 @@ function MainAppContent() {
   // Owner Portal modal state
   const [isOwnerManagerOpen, setIsOwnerManagerOpen] = useState(false);
   const [ownerItemToEdit, setOwnerItemToEdit] = useState<MenuItem | null>(null);
+  const [ownerTargetTab, setOwnerTargetTab] = useState<OwnerTabType>('items');
 
   // Sync cart to localStorage
   useEffect(() => {
@@ -51,8 +53,9 @@ function MainAppContent() {
     setTimeout(() => setToastMessage(null), 3000);
   };
 
-  const handleOpenOwnerManager = (itemToEdit?: MenuItem) => {
+  const handleOpenOwnerManager = (itemToEdit?: MenuItem, targetTab: OwnerTabType = 'items') => {
     setOwnerItemToEdit(itemToEdit || null);
+    setOwnerTargetTab(targetTab);
     setIsOwnerManagerOpen(true);
   };
 
@@ -213,31 +216,38 @@ function MainAppContent() {
       <Footer onOpenOwnerManager={() => handleOpenOwnerManager()} />
 
       {/* Item Detail / Customization Modal */}
-      <ItemDetailModal
-        item={selectedItemForModal}
-        onClose={() => setSelectedItemForModal(null)}
-        onAddToCart={handleAddToCart}
-      />
+      {selectedItemForModal && (
+        <ItemDetailModal
+          item={selectedItemForModal}
+          onClose={() => setSelectedItemForModal(null)}
+          onAddToCart={handleAddToCart}
+        />
+      )}
 
       {/* Cart Drawer */}
-      <CartDrawer
-        isOpen={isCartOpen}
-        onClose={() => setIsCartOpen(false)}
-        cartItems={cartItems}
-        onUpdateQuantity={handleUpdateQuantity}
-        onRemoveItem={handleRemoveItem}
-        onClearCart={handleClearCart}
-      />
+      {isCartOpen && (
+        <CartDrawer
+          isOpen={isCartOpen}
+          onClose={() => setIsCartOpen(false)}
+          cartItems={cartItems}
+          onUpdateQuantity={handleUpdateQuantity}
+          onRemoveItem={handleRemoveItem}
+          onClearCart={handleClearCart}
+        />
+      )}
 
       {/* Owner Menu Management & CRUD Modal */}
-      <OwnerMenuManager
-        isOpen={isOwnerManagerOpen}
-        onClose={() => {
-          setIsOwnerManagerOpen(false);
-          setOwnerItemToEdit(null);
-        }}
-        initialEditItem={ownerItemToEdit}
-      />
+      {isOwnerManagerOpen && (
+        <OwnerMenuManager
+          isOpen={isOwnerManagerOpen}
+          onClose={() => {
+            setIsOwnerManagerOpen(false);
+            setOwnerItemToEdit(null);
+          }}
+          initialEditItem={ownerItemToEdit}
+          initialTab={ownerTargetTab}
+        />
+      )}
 
       {/* Floating Quick Action Bar */}
       <aside aria-label="Quick Action Bar" className="fixed bottom-5 right-5 z-30 flex items-center gap-3">
