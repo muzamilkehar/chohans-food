@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { 
   X, 
   Clock, 
@@ -17,7 +17,9 @@ import {
   Phone,
   MapPin,
   FileText,
-  Printer
+  Printer,
+  Filter,
+  CalendarDays
 } from 'lucide-react';
 import { OrderRecord, CartItem } from '../types';
 import { RESTAURANT_INFO } from '../data/restaurantData';
@@ -30,30 +32,80 @@ interface OrderHistoryModalProps {
   onReorder: (items: CartItem[]) => void;
 }
 
+type TimeframeOption = 'all' | 'today' | 'this_week' | 'this_month' | 'specific_date';
+
 export const OrderHistoryModal: React.FC<OrderHistoryModalProps> = ({
   isOpen,
   onClose,
   onReorder,
 }) => {
   const { orders, deleteOrder, clearAllOrders } = useMenu();
-  const [selectedOrder, setSelectedOrder] = useState<OrderRecord | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [copiedOrderId, setCopiedOrderId] = useState<string | null>(null);
   const [showClearConfirm, setShowClearConfirm] = useState(false);
   const [invoiceOrder, setInvoiceOrder] = useState<OrderRecord | null>(null);
+  const [timeframe, setTimeframe] = useState<TimeframeOption>('all');
+
+  const todayStr = useMemo(() => {
+    const d = new Date();
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  }, []);
+  const [selectedDate, setSelectedDate] = useState<string>(todayStr);
+
+  // Helper date functions
+  const isSameDay = (d1: Date, d2: Date) => {
+    return d1.getFullYear() === d2.getFullYear() &&
+      d1.getMonth() === d2.getMonth() &&
+      d1.getDate() === d2.getDate();
+  };
+
+  const getLocalDateKey = (date: Date) => {
+    const y = date.getFullYear();
+    const m = String(date.getMonth() + 1).padStart(2, '0');
+    const d = String(date.getDate()).padStart(2, '0');
+    return `${y}-${m}-${d}`;
+  };
+
+  // Filtered by Timeframe + Search
+  const filteredOrders = useMemo(() => {
+    const now = new Date();
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const sevenDaysAgo = new Date(today);
+    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 6);
+    const firstDayOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+
+    return orders.filter((ord) => {
+      const orderDate = new Date(ord.createdAt);
+      const isDateValid = !isNaN(orderDate.getTime());
+
+      // Timeframe check
+      if (isDateValid) {
+        if (timeframe === 'today' && !isSameDay(orderDate, today)) return false;
+        if (timeframe === 'this_week' && orderDate < sevenDaysAgo) return false;
+        if (timeframe === 'this_month' && orderDate < firstDayOfMonth) return false;
+        if (timeframe === 'specific_date' && selectedDate) {
+          const ordKey = getLocalDateKey(orderDate);
+          if (ordKey !== selectedDate) return false;
+        }
+      }
+
+      // Search Query check
+      const q = searchQuery.toLowerCase().trim();
+      if (!q) return true;
+      return (
+        ord.orderNumber.toLowerCase().includes(q) ||
+        ord.customerName.toLowerCase().includes(q) ||
+        ord.customerPhone.toLowerCase().includes(q) ||
+        ord.items.some(i => i.item.name.toLowerCase().includes(q))
+      );
+    });
+  }, [orders, timeframe, selectedDate, searchQuery]);
 
   if (!isOpen) return null;
 
-  const filteredOrders = orders.filter((ord) => {
-    const q = searchQuery.toLowerCase().trim();
-    if (!q) return true;
-    return (
-      ord.orderNumber.toLowerCase().includes(q) ||
-      ord.customerName.toLowerCase().includes(q) ||
-      ord.customerPhone.toLowerCase().includes(q) ||
-      ord.items.some(i => i.item.name.toLowerCase().includes(q))
-    );
-  });
+  const totalSpentInPeriod = filteredOrders
+    .filter(o => o.status !== 'cancelled')
+    .reduce((sum, o) => sum + o.grandTotal, 0);
 
   const getStatusBadge = (status: OrderRecord['status']) => {
     switch (status) {
@@ -140,11 +192,11 @@ export const OrderHistoryModal: React.FC<OrderHistoryModalProps> = ({
               <h3 className="text-lg font-black tracking-tight text-white flex items-center gap-2">
                 <span>Order History & Receipts</span>
                 <span className="text-[11px] font-bold bg-white/20 text-white px-2 py-0.5 rounded-full">
-                  {orders.length} {orders.length === 1 ? 'Order' : 'Orders'}
+                  {orders.length} Total
                 </span>
               </h3>
               <p className="text-xs text-gray-400">
-                Track past food orders, view digital receipts, or re-order your favorites with 1-click.
+                Track past food orders, filter by day/week/month, view digital receipts, or re-order.
               </p>
             </div>
           </div>
@@ -161,51 +213,126 @@ export const OrderHistoryModal: React.FC<OrderHistoryModalProps> = ({
         {/* Content Body */}
         <div className="p-4 sm:p-6 overflow-y-auto flex-1 space-y-4 bg-gray-50">
           
+          {/* Filter Bar: Day / Week / Month / Date Picker */}
           {orders.length > 0 && (
-            <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 bg-white p-3 rounded-2xl border border-gray-200 shadow-sm">
-              <div className="relative flex-1">
-                <Search className="w-4 h-4 text-gray-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
-                <input
-                  type="text"
-                  placeholder="Search by order #, customer, or dish..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full pl-9 pr-4 py-2 rounded-xl bg-gray-50 border border-gray-200 text-xs font-semibold text-gray-900 focus:outline-none focus:border-[#B91C1C]"
-                />
+            <div className="bg-white p-3.5 rounded-2xl border border-gray-200 shadow-sm space-y-3">
+              
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <div className="flex flex-wrap items-center gap-1.5">
+                  <button
+                    onClick={() => setTimeframe('all')}
+                    className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                      timeframe === 'all'
+                        ? 'bg-[#111827] text-white shadow-sm'
+                        : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                    }`}
+                  >
+                    All History
+                  </button>
+
+                  <button
+                    onClick={() => setTimeframe('today')}
+                    className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                      timeframe === 'today'
+                        ? 'bg-[#B91C1C] text-white shadow-sm'
+                        : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                    }`}
+                  >
+                    Today
+                  </button>
+
+                  <button
+                    onClick={() => setTimeframe('this_week')}
+                    className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                      timeframe === 'this_week'
+                        ? 'bg-[#111827] text-white shadow-sm'
+                        : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                    }`}
+                  >
+                    This Week
+                  </button>
+
+                  <button
+                    onClick={() => setTimeframe('this_month')}
+                    className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                      timeframe === 'this_month'
+                        ? 'bg-[#111827] text-white shadow-sm'
+                        : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                    }`}
+                  >
+                    This Month
+                  </button>
+                </div>
+
+                {/* Specific Date input */}
+                <div className="flex items-center gap-1.5 bg-gray-50 p-1 px-2.5 rounded-xl border border-gray-200">
+                  <Calendar className="w-3.5 h-3.5 text-gray-500" />
+                  <span className="text-[11px] font-bold text-gray-700">Date:</span>
+                  <input
+                    type="date"
+                    value={selectedDate}
+                    onChange={(e) => {
+                      setSelectedDate(e.target.value);
+                      setTimeframe('specific_date');
+                    }}
+                    className="bg-white border border-gray-300 rounded-lg px-2 py-0.5 text-xs font-semibold text-gray-900 focus:outline-none"
+                  />
+                </div>
               </div>
 
-              {orders.length > 0 && (
-                <div className="flex items-center gap-2 shrink-0">
-                  {showClearConfirm ? (
-                    <div className="flex items-center gap-1.5">
-                      <span className="text-xs font-bold text-red-600">Clear all?</span>
-                      <button
-                        onClick={() => {
-                          clearAllOrders();
-                          setShowClearConfirm(false);
-                        }}
-                        className="px-2.5 py-1 bg-red-600 hover:bg-red-700 text-white rounded-lg text-xs font-bold"
-                      >
-                        Yes, Clear
-                      </button>
-                      <button
-                        onClick={() => setShowClearConfirm(false)}
-                        className="px-2 py-1 bg-gray-200 hover:bg-gray-300 text-gray-800 rounded-lg text-xs font-bold"
-                      >
-                        Cancel
-                      </button>
+              {/* Search & Period Total Bar */}
+              <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 pt-2 border-t border-gray-100">
+                <div className="relative flex-1">
+                  <Search className="w-4 h-4 text-gray-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+                  <input
+                    type="text"
+                    placeholder="Search by order #, customer, or dish..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="w-full pl-9 pr-4 py-2 rounded-xl bg-gray-50 border border-gray-200 text-xs font-semibold text-gray-900 focus:outline-none focus:border-[#B91C1C]"
+                  />
+                </div>
+
+                <div className="flex items-center gap-3 shrink-0">
+                  <span className="text-xs font-bold text-gray-600">
+                    Total: <strong className="text-[#B91C1C] font-mono">Rs {totalSpentInPeriod.toLocaleString()}</strong> ({filteredOrders.length} {filteredOrders.length === 1 ? 'order' : 'orders'})
+                  </span>
+
+                  {orders.length > 0 && (
+                    <div>
+                      {showClearConfirm ? (
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-xs font-bold text-red-600">Clear all?</span>
+                          <button
+                            onClick={() => {
+                              clearAllOrders();
+                              setShowClearConfirm(false);
+                            }}
+                            className="px-2.5 py-1 bg-red-600 hover:bg-red-700 text-white rounded-lg text-xs font-bold"
+                          >
+                            Yes
+                          </button>
+                          <button
+                            onClick={() => setShowClearConfirm(false)}
+                            className="px-2 py-1 bg-gray-200 hover:bg-gray-300 text-gray-800 rounded-lg text-xs font-bold"
+                          >
+                            No
+                          </button>
+                        </div>
+                      ) : (
+                        <button
+                          onClick={() => setShowClearConfirm(true)}
+                          className="p-1.5 text-gray-400 hover:text-red-600 rounded-lg hover:bg-red-50 transition-colors cursor-pointer"
+                          title="Clear all order history"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      )}
                     </div>
-                  ) : (
-                    <button
-                      onClick={() => setShowClearConfirm(true)}
-                      className="px-3 py-2 text-xs font-bold text-gray-500 hover:text-red-600 flex items-center gap-1.5 rounded-xl hover:bg-red-50 transition-colors cursor-pointer"
-                    >
-                      <Trash2 className="w-3.5 h-3.5" />
-                      <span>Clear History</span>
-                    </button>
                   )}
                 </div>
-              )}
+              </div>
+
             </div>
           )}
 
@@ -230,13 +357,16 @@ export const OrderHistoryModal: React.FC<OrderHistoryModalProps> = ({
               </button>
             </div>
           ) : filteredOrders.length === 0 ? (
-            <div className="py-12 text-center bg-white rounded-3xl border border-gray-200 p-6">
-              <p className="text-xs font-bold text-gray-500">No orders matching "{searchQuery}"</p>
+            <div className="py-12 text-center bg-white rounded-3xl border border-gray-200 p-6 space-y-2">
+              <p className="text-xs font-bold text-gray-500">No orders matching selected date or filters.</p>
               <button
-                onClick={() => setSearchQuery('')}
-                className="mt-2 text-xs text-[#B91C1C] font-black hover:underline"
+                onClick={() => {
+                  setTimeframe('all');
+                  setSearchQuery('');
+                }}
+                className="text-xs text-[#B91C1C] font-black hover:underline"
               >
-                Clear Search
+                Reset All Filters
               </button>
             </div>
           ) : (
@@ -294,13 +424,13 @@ export const OrderHistoryModal: React.FC<OrderHistoryModalProps> = ({
                         )}
                         {ord.customerPhone && (
                           <span className="text-gray-600 flex items-center gap-1 font-medium">
-                            <Phone className="w-3 h-3 text-gray-400" />
+                            <Phone className="w-3.5 h-3.5 text-gray-400" />
                             {ord.customerPhone}
                           </span>
                         )}
                         {ord.deliveryAddress && (
                           <span className="text-gray-600 flex items-center gap-1 font-medium">
-                            <MapPin className="w-3 h-3 text-[#B91C1C]" />
+                            <MapPin className="w-3.5 h-3.5 text-[#B91C1C]" />
                             {ord.deliveryAddress}
                           </span>
                         )}

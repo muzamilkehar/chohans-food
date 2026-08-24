@@ -1,0 +1,84 @@
+{
+  "$schema": "https://raw.githubusercontent.com/firebase/firebase-tools/master/schema/firestore-blueprint.json",
+  "entities": {
+    "menu_items": {
+      "title": "Menu Items",
+      "description": "Restaurant menu food items with categories, pricing, sizes, and availability",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "urduName": { "type": "string" },
+        "category": { "type": "string" },
+        "description": { "type": "string" },
+        "price": { "type": "number" },
+        "isAvailable": { "type": "boolean" },
+        "popular": { "type": "boolean" },
+        "sizes": { "type": "array" },
+        "addOns": { "type": "array" }
+      },
+      "required": ["id", "name", "category", "price"]
+    },
+    "deals": {
+      "title": "Deals and Combos",
+      "description": "Special value combos, pizza deals, and super saver bundles",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "title": { "type": "string" },
+        "urduTitle": { "type": "string" },
+        "description": { "type": "string" },
+        "price": { "type": "number" },
+        "originalPrice": { "type": "number" },
+        "tag": { "type": "string" },
+        "isAvailable": { "type": "boolean" }
+      },
+      "required": ["id", "title", "price"]
+    },
+    "categories": {
+      "title": "Food Categories",
+      "description": "Menu categories such as Pizza, Burgers, Broast, Roll Paratha, Fries & Pasta",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "urduName": { "type": "string" },
+        "icon": { "type": "string" },
+        "description": { "type": "string" },
+        "isCustom": { "type": "boolean" }
+      },
+      "required": ["id", "name"]
+    },
+    "orders": {
+      "title": "Customer Orders",
+      "description": "Orders placed by customers for delivery or counter takeaway with invoice records",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "orderNumber": { "type": "string" },
+        "createdAt": { "type": "string" },
+        "customerName": { "type": "string" },
+        "customerPhone": { "type": "string" },
+        "deliveryAddress": { "type": "string" },
+        "orderType": { "type": "string" },
+        "specialInstructions": { "type": "string" },
+        "items": { "type": "array" },
+        "subtotal": { "type": "number" },
+        "deliveryFee": { "type": "number" },
+        "grandTotal": { "type": "number" },
+        "status": { "type": "string" },
+        "receiptText": { "type": "string" }
+      },
+      "required": ["id", "orderNumber", "customerName", "items", "grandTotal", "status"]
+    },
+    "settings": {
+      "title": "Restaurant Settings",
+      "description": "Owner passcode and restaurant operating parameters",
+      "type": "object",
+      "properties": {
+        "ownerPin": { "type": "string" },
+        "updatedAt": { "type": "string" }
+      }
+    }
+  }
+}

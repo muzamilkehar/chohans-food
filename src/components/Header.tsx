@@ -10,7 +10,8 @@ import {
   Lock,
   Unlock,
   Sliders,
-  Clock
+  Clock,
+  Cloud
 } from 'lucide-react';
 import { RESTAURANT_INFO } from '../data/restaurantData';
 import { CartItem } from '../types';
@@ -30,7 +31,7 @@ export const Header: React.FC<HeaderProps> = ({
   onOpenOwnerManager,
   onOpenOrderHistory,
 }) => {
-  const { isOwnerMode, orders } = useMenu();
+  const { isOwnerMode, orders, isCloudSynced, syncStatus } = useMenu();
   const [isScrolled, setIsScrolled] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [isOpenNow, setIsOpenNow] = useState(true);
@@ -87,6 +88,18 @@ export const Header: React.FC<HeaderProps> = ({
             <span className="hidden sm:inline-flex items-center gap-1 text-gray-300">
               <MapPin className="w-3.5 h-3.5 text-[#B91C1C]" />
               Allah Wala Chowk, Shikarpur
+            </span>
+            {/* Real-time Cloud Status */}
+            <span 
+              className={`hidden lg:inline-flex items-center gap-1 text-[11px] font-semibold px-2 py-0.5 rounded-full ${
+                syncStatus === 'synced'
+                  ? 'bg-sky-950 text-sky-300 border border-sky-800/60'
+                  : 'bg-amber-950 text-amber-300 border border-amber-800/60'
+              }`}
+              title="Real-Time Cloud Storage & Multi-Device Synchronization Active"
+            >
+              <Cloud className="w-3 h-3 text-sky-400" />
+              <span>{syncStatus === 'synced' ? 'Cloud Connected' : 'Syncing Cloud...'}</span>
             </span>
           </div>
 

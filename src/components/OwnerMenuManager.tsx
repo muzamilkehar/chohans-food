@@ -25,7 +25,11 @@ import {
   Layers,
   Clock,
   Receipt,
-  FolderPlus
+  FolderPlus,
+  Cloud,
+  RefreshCw,
+  Wifi,
+  ShieldCheck
 } from 'lucide-react';
 import { useMenu } from '../context/MenuContext';
 import { MenuItem, DealItem } from '../types';
@@ -69,6 +73,10 @@ export const OwnerMenuManager: React.FC<OwnerMenuManagerProps> = ({
     categories,
     orders,
     isOwnerMode,
+    ownerPin,
+    isCloudSynced,
+    syncStatus,
+    syncNow,
     loginOwner,
     logoutOwner,
     changeOwnerPin,
@@ -83,6 +91,8 @@ export const OwnerMenuManager: React.FC<OwnerMenuManagerProps> = ({
     exportMenuData,
     importMenuData,
   } = useMenu();
+
+  const [isSyncing, setIsSyncing] = useState(false);
 
   // Navigation tab inside manager
   const [activeTab, setActiveTab] = useState<OwnerTabType>(initialTab);
@@ -382,7 +392,7 @@ export const OwnerMenuManager: React.FC<OwnerMenuManagerProps> = ({
   };
 
   // Change PIN handler
-  const handleChangePin = (e: React.FormEvent) => {
+  const handleChangePin = async (e: React.FormEvent) => {
     e.preventDefault();
     setPinChangeMsg(null);
     const trimmedCurrent = currentPinInput.trim();
@@ -402,14 +412,23 @@ export const OwnerMenuManager: React.FC<OwnerMenuManagerProps> = ({
       return;
     }
 
-    const res = changeOwnerPin(trimmedCurrent, trimmedNew);
+    const res = await changeOwnerPin(trimmedCurrent, trimmedNew);
     setPinChangeMsg({ success: res.success, text: res.message });
     if (res.success) {
       setCurrentPinInput('');
       setNewPinInput('');
       setConfirmPinInput('');
-      showToast('Owner passcode successfully updated!');
+      showToast('Owner passcode saved to Cloud & local storage!');
     }
+  };
+
+  const handleSyncNow = async () => {
+    setIsSyncing(true);
+    await syncNow();
+    setTimeout(() => {
+      setIsSyncing(false);
+      showToast('All menu, deals, orders & categories synced to Cloud Firestore!');
+    }, 600);
   };
 
   // Filtered menu items for owner list
@@ -1475,6 +1494,44 @@ export const OwnerMenuManager: React.FC<OwnerMenuManagerProps> = ({
                       </button>
                     </div>
                   </form>
+                </div>
+
+                {/* Cloud Firestore & Multi-Device Sync Card */}
+                <div className="bg-white p-6 rounded-3xl border border-gray-200 shadow-sm space-y-4 max-w-xl">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <Cloud className="w-5 h-5 text-sky-600" />
+                      <h4 className="font-black text-gray-900 text-sm uppercase tracking-wider">Cloud Database & Multi-Device Sync</h4>
+                    </div>
+                    <span className={`inline-flex items-center gap-1.5 text-[11px] font-bold px-2.5 py-1 rounded-full ${
+                      syncStatus === 'synced' 
+                        ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                        : syncStatus === 'connecting'
+                        ? 'bg-amber-50 text-amber-700 border border-amber-200'
+                        : 'bg-red-50 text-red-700 border border-red-200'
+                    }`}>
+                      <span className={`w-2 h-2 rounded-full ${
+                        syncStatus === 'synced' ? 'bg-emerald-500 animate-pulse' : syncStatus === 'connecting' ? 'bg-amber-500 animate-spin' : 'bg-red-500'
+                      }`}></span>
+                      <span>{syncStatus === 'synced' ? '🟢 Cloud Synced Live' : syncStatus === 'connecting' ? 'Connecting...' : 'Offline'}</span>
+                    </span>
+                  </div>
+
+                  <p className="text-xs text-gray-600 leading-relaxed">
+                    All your menu items, categories, combo deals, owner passcode (<strong>{ownerPin}</strong>), and customer order records are permanently stored in <strong>Cloud Firestore</strong>. Any changes you make or orders placed will stay saved even if you refresh or log in from any phone, laptop, or computer.
+                  </p>
+
+                  <div className="pt-1 flex items-center gap-3">
+                    <button
+                      type="button"
+                      disabled={isSyncing}
+                      onClick={handleSyncNow}
+                      className="px-5 py-2.5 rounded-full bg-sky-600 hover:bg-sky-700 text-white text-xs font-black uppercase tracking-wider flex items-center gap-2 transition-all cursor-pointer disabled:opacity-50 shadow-sm"
+                    >
+                      <RefreshCw className={`w-3.5 h-3.5 ${isSyncing ? 'animate-spin' : ''}`} />
+                      <span>{isSyncing ? 'Synchronizing...' : 'Sync Cloud Database Now'}</span>
+                    </button>
+                  </div>
                 </div>
 
                 {/* Backup & Restore Card */}
